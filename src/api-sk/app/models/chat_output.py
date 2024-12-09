@@ -1,8 +1,7 @@
 from pydantic import BaseModel
 
-
 class ChatOutput(BaseModel):
     thread_id: str
-    message: str
+    messages: list[str]
 
 __all__ = ["ChatOutput"]

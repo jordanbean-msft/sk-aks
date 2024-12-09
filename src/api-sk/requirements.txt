@@ -13,3 +13,4 @@ fastapi-profiler==1.4.1
 azure-identity==1.19.0
 aiofiles==24.1.0
 semantic-kernel[azure]==1.16.0
+opentelemetry-exporter-otlp-proto-grpc==1.28.2
