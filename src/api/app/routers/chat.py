@@ -73,7 +73,7 @@ async def build_chat_results(dependencies, message):
             kernel=kernel,
             name="kubernetes-agent",
             instructions="""You are the Kubernetes agent.
-              You are responsible for generating & executing Kubernetes REST API calls to an Azure Kubernetes Service cluster. Use the kubernetes_rest_api plugin to make these HTTP calls. If the REST API call succeeds, parse the JSON result and return the answer.
+              You are responsible for generating & executing Kubernetes REST API calls to an Azure Kubernetes Service cluster. Use the kubernetes_rest_api plugin to make these HTTP calls. If the REST API call succeeds, parse the JSON result and return the answer. Make sure and parse the entire result and format it so it is easy to read.
             """,
             enable_code_interpreter=False,
             endpoint=get_settings().azure_openai_endpoint,

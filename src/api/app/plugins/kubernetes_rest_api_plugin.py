@@ -7,6 +7,8 @@ from opentelemetry import trace
 
 from semantic_kernel.functions.kernel_function_decorator import kernel_function
 
+from app.config import get_settings
+
 tracer = trace.get_tracer(__name__)
 
 logger = logging.getLogger("uvicorn.error")
@@ -23,7 +25,7 @@ class KubernetesRestApiPlugin:
                                        headers: Annotated[dict, "The HTTP REST API headers to pass in"] = None,
     ) -> Annotated[Response, "The result of the HTTP REST API call"]:
         path_to_certificates = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "data")
-        base_url = "https://sk-aks-dns-1fp6daak.hcp.eastus2.azmk8s.io/"
+        base_url = get_settings().azure_kubernetes_base_url
 
         result = requests.request(
             method=method,
@@ -38,8 +40,9 @@ class KubernetesRestApiPlugin:
             )
         )
 
-        if(result.status_code == 200):
-            logger.info(result.text)
+        if result.status_code == 200:
+            logger.debug(f"Successfully executed Kubernetes REST API call: {result.url}")
+            logger.debug(f"Body: {result.json()}")
 
         return result
 

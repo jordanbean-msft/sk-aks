@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     azure_openai_chat_deployment_name: str
     azure_openai_embedding_deployment_name: str
     azure_openai_api_key: str
+    azure_kubernetes_base_url: str
 
 
 @lru_cache
