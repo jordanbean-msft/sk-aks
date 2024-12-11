@@ -20,9 +20,10 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.trace import set_tracer_provider
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
 from app.routers import chat
-from app.log_config import configure_azure_monitor_outer
+#from app.log_config import configure_azure_monitor_outer
 from app.routers import liveness, readiness, startup
 from app.dependencies import setup_dependencies
 
@@ -99,6 +100,8 @@ def set_up_metrics():
 set_up_logging()
 set_up_tracing()
 set_up_metrics()
+
+FastAPIInstrumentor.instrument_app(app)
 
 # only set up OpenTelemetry logging if the OTEL environment variables are set
 # if os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT") is not None:
