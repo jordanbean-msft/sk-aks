@@ -10,4 +10,6 @@ RUN opentelemetry-bootstrap -a install
 
 COPY ./app /code/app
 
-CMD [ "opentelemetry-instrument", "python", "-m", "uvicorn", "app.main:app", "--loop", "asyncio", "--host", "0.0.0.0", "--port", "8000"]
+#CMD [ "opentelemetry-instrument", "python", "-m", "uvicorn", "app.main:app", "--loop", "asyncio", "--host", "0.0.0.0", "--port", "8000"]
+
+CMD [ "fastapi", "run", "app/main.py", "--port", "80"]

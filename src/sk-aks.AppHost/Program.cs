@@ -17,7 +17,7 @@ var api = builder.AddDockerfile("api", "../api")
     .WithEnvironment("AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME", azureOpenAiEmbeddingDeploymentName)
     .WithEnvironment("AZURE_OPENAI_API_VERSION", azureOpenAiApiVersion)
     .WithEnvironment("AZURE_KUBERNETES_BASE_URL", azureKubernetesBaseUrl)
-    .WithHttpEndpoint(targetPort: 8000)
+    .WithHttpEndpoint(targetPort: 80)
     .WithExternalHttpEndpoints()
     .WithOtlpExporter();
 #pragma warning restore ASPIREHOSTINGPYTHON001
@@ -25,6 +25,7 @@ var api = builder.AddDockerfile("api", "../api")
 if(builder.ExecutionContext.IsRunMode && builder.Environment.IsDevelopment())
 {
     api.WithEnvironment("DEBUG", "True");
+    api.RunWithHttpsDevCertificate("HTTPS_CERT_FILE", "HTTPS_CERT_KEY_FILE");
 }
 
 #pragma warning disable ASPIREHOSTINGPYTHON001
@@ -38,6 +39,7 @@ var web = builder.AddDockerfile("web", "../web")
 if(builder.ExecutionContext.IsRunMode && builder.Environment.IsDevelopment())
 {
     web.WithEnvironment("DEBUG", "True");
+    web.RunWithHttpsDevCertificate("HTTPS_CERT_FILE", "HTTPS_CERT_KEY_FILE");
 }
 
 builder.Build().Run();

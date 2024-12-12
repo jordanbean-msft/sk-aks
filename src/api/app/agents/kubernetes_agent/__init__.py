@@ -1,3 +1,3 @@
-from .main import KubernetesAgent
+from .main import create_kubernetes_agent
 
-__all__ = ["KubernetesAgent"]
+__all__ = ["create_kubernetes_agent"]

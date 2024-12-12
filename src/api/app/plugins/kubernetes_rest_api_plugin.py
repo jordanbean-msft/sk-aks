@@ -22,15 +22,13 @@ class KubernetesRestApiPlugin:
                                        method: Annotated[str, "The HTTP REST API method (GET, POST, PUT, etc) to make"],
                                        url: Annotated[str, "The HTTP REST API URL to call"],
                                        body: Annotated[str, "The HTTP REST API body to pass in"],
-                                       headers: Annotated[dict, "The HTTP REST API headers to pass in"] = None,
-    ) -> Annotated[Response, "The result of the HTTP REST API call"]:
+    ) -> Annotated[str, "The result of the HTTP REST API call"]:
         path_to_certificates = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "data")
         base_url = get_settings().azure_kubernetes_base_url
 
         result = requests.request(
             method=method,
             url=urllib.parse.urljoin(base_url, url),
-            headers=headers,
             data=body,
             timeout=10,
             verify=(os.path.join(path_to_certificates, "ca.pem")),
@@ -44,7 +42,7 @@ class KubernetesRestApiPlugin:
             logger.debug(f"Successfully executed Kubernetes REST API call: {result.url}")
             logger.debug(f"Body: {result.json()}")
 
-        return result
+        return result.json()
 
 
 __all__ = ["KubernetesRestApiPlugin"]
