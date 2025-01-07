@@ -356,3 +356,5 @@ MigrationBackup/
 *.pem
 
 config.txt
+
+**/app/data

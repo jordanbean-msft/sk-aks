@@ -45,20 +45,15 @@ Perform each of the following sections in a new shell window.
     AZURE_OPENAI_CHAT_DEPLOYMENT_NAME=""
     AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME=""
     AZURE_OPENAI_API_VERSION=""
-    AZURE_KUBERNETES_BASE_URL=""
     ```
 
-1.  Generate the Kubernetes configuration file and store it in the `/src/api/app/data` directory. This file will be used to extract the needed certificates.
+#### For each Kubernetes cluster
 
-    ```shell
-
-    ```
-
-1.  Generate the following certificate files from your `kubeconfig` file generated in the previous step. These certificates are used by the
+1.  Generate the authentication certificate files from your AKS clsuter. These certificates are used by the
     `src/api/app/plugins/kubernetes_rest_api_plugin` to authenticate to your cluser.
 
-    ```shell
-
+    ```powershell
+    .\write-certificates.ps1 -resourceGroupName <resource-group-name> -aksClusterName <aks-cluster-name>
     ```
 
 1.  Create a virtual environment
@@ -80,6 +75,8 @@ Perform each of the following sections in a new shell window.
     ```
 
 ### Web
+
+1.  Open a new shell
 
 1.  Navigate to the `src/web` directory
 
