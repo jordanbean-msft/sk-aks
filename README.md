@@ -1,6 +1,6 @@
 # sk-aks
 
-![architecture](./.img/architecture.png)
+![architecture](./.img/architecture.drawio.svg)
 
 ## Disclaimer
 
