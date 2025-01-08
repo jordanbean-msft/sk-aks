@@ -111,4 +111,14 @@ Perform each of the following sections in a new shell window.
 
 1.  Navigate to the URL that is printed
 
+## .NET Aspire local with Docker
+
+1.  Run the following to build & launch both services locally
+
+    ```shell
+    cd src
+
+    dotnet run --project .\SkAks.AppHost\SkAks.AppHost.csproj
+    ```
+
 ## Links
