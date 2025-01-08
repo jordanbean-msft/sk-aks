@@ -1,2 +1,8 @@
-name: template-repository
-services:
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+name: sk-aks
+services:  
+  app:
+    language: dotnet
+    project: ./src/SkAks.AppHost/SkAks.AppHost.csproj
+    host: containerapp
