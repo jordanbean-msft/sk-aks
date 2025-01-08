@@ -1,8 +1,10 @@
 import os
 import requests
 
+api_base_url = os.getenv("services__api__api__0")
+
 def create_agent():
-    result = requests.post(url=f"{os.getenv("API_BASE_URL")}/v1/create_agent",
+    result = requests.post(url=f"{api_base_url}/v1/create_agent",
                   timeout=30)
 
     if result.ok:
@@ -11,7 +13,7 @@ def create_agent():
     return None
 
 def create_thread(agent_id):
-    result = requests.post(url=f"{os.getenv("API_BASE_URL")}/v1/create_thread",
+    result = requests.post(url=f"{api_base_url}/v1/create_thread",
                   json={"agent_id": agent_id},
                   timeout=30)
     if result.ok:
@@ -20,7 +22,7 @@ def create_thread(agent_id):
     return None
 
 def chat(agent_id, thread_id, content):
-    for event in requests.post(url=f"{os.getenv("API_BASE_URL")}/v1/chat",
+    for event in requests.post(url=f"{api_base_url}/v1/chat",
                                json={
                                     "agent_id": agent_id,
                                     "thread_id": thread_id,

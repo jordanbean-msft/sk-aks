@@ -100,7 +100,7 @@ Perform each of the following sections in a new shell window.
 1.  Set an environment variable with the URL & port of the API (PowerShell)
 
     ```shell
-    $env:API_BASE_URL="http://127.0.0.1:8000"
+    $env:services__api__api__0="http://127.0.0.1:8000"
     ```
 
 1.  Run the web app
