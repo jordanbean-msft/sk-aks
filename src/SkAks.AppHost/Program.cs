@@ -2,13 +2,13 @@ var builder = DistributedApplication.CreateBuilder(args);
 
 var azureOpenAIApiKey = builder.AddParameter(name: "AzureOpenAIApiKey", secret: true);
 var azureOpenAIEndpoint = builder.AddParameter(name: "AzureOpenAIEndpoint", secret: true);
-var azureOpenAIChatDeploymentName = builder.AddParameter(name: "AzureOpenAIChatDeploymentName");
-var azureOpenAIEmbeddingDeploymentName = builder.AddParameter(name: "AzureOpenAIEmbeddingDeploymentName");
-var azureOpenAIApiVersion = builder.AddParameter(name: "AzureOpenAIApiVersion");
-var azureKubernetesBaseUrl = builder.AddParameter(name: "AzureKubernetesBaseUrl");
+var azureOpenAIChatDeploymentName = builder.AddParameter(name: "AzureOpenAIChatDeploymentName", secret: true);
+var azureOpenAIEmbeddingDeploymentName = builder.AddParameter(name: "AzureOpenAIEmbeddingDeploymentName", secret: true);
+var azureOpenAIApiVersion = builder.AddParameter(name: "AzureOpenAIApiVersion", secret: true);
+var azureKubernetesBaseUrl = builder.AddParameter(name: "AzureKubernetesBaseUrl", secret: true);
 
 var apiApp = builder.AddDockerfile("api", "../api", "Dockerfile")
-    .WithHttpEndpoint(port: 8000, targetPort: 80, name: "api")
+    .WithHttpEndpoint(port: 8001, targetPort: 80, "api")
     .WithExternalHttpEndpoints()
     .WithEnvironment("AZURE_OPENAI_API_KEY", azureOpenAIApiKey)
     .WithEnvironment("AZURE_OPENAI_ENDPOINT", azureOpenAIEndpoint)
@@ -19,7 +19,7 @@ var apiApp = builder.AddDockerfile("api", "../api", "Dockerfile")
     .WithOtlpExporter();
     
 var webApp = builder.AddDockerfile("web", "../web", "Dockerfile")
-    .WithHttpEndpoint(port: 8501, targetPort: 8501)
+    .WithHttpEndpoint(port: 8000, targetPort: 8501)
     .WithExternalHttpEndpoints()
     .WaitFor(apiApp)
     .WithReference(apiApp.GetEndpoint("api"))

@@ -358,3 +358,4 @@ MigrationBackup/
 config.txt
 
 **/app/data
+.azure
