@@ -45,11 +45,12 @@ Perform each of the following sections in a new shell window.
     AZURE_OPENAI_CHAT_DEPLOYMENT_NAME=""
     AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME=""
     AZURE_OPENAI_API_VERSION=""
+    AZURE_KUBERNETES_BASE_URL=""
     ```
 
 #### For each Kubernetes cluster
 
-1.  Generate the authentication certificate files from your AKS clsuter. These certificates are used by the
+1.  Generate the authentication certificate files from your AKS cluster. These certificates are used by the
     `src/api/app/plugins/kubernetes_rest_api_plugin` to authenticate to your cluser.
 
     ```powershell
