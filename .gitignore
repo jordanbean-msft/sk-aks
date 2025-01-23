@@ -357,5 +357,6 @@ MigrationBackup/
 
 config.txt
 
-**/app/data
+**/data
+
 .azure

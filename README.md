@@ -19,7 +19,7 @@
 
 Perform each of the following sections in a new shell window.
 
-### Logging
+### Logging (optional)
 
 1.  Run the following CLI command to enable the .NET Aspire dashboard to see the OpenTelemetry metrics
 
@@ -45,16 +45,27 @@ Perform each of the following sections in a new shell window.
     AZURE_OPENAI_CHAT_DEPLOYMENT_NAME=""
     AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME=""
     AZURE_OPENAI_API_VERSION=""
-    AZURE_KUBERNETES_BASE_URL=""
     ```
 
 #### For each Kubernetes cluster
+
+##### Authentication - Local accounts with Kubernetes RBAC
 
 1.  Generate the authentication certificate files from your AKS cluster. These certificates are used by the
     `src/api/app/plugins/kubernetes_rest_api_plugin` to authenticate to your cluser.
 
     ```powershell
     .\write-certificates.ps1 -resourceGroupName <resource-group-name> -aksClusterName <aks-cluster-name>
+    ```
+
+#### Authentication - Use Microsoft Entra ID authentication with Kubernetes RBAC
+
+1.  Generate the config file needed for the plugin to understand how to connect to your cluster.
+
+    ```shell
+    cd src/api
+
+    az aks get-credentials --resource-group <resource-group-name> --name <aks-cluster-name> --file - > ./app/data/<aks-cluster-name>/config
     ```
 
 1.  Create a virtual environment
@@ -111,7 +122,7 @@ Perform each of the following sections in a new shell window.
 
 1.  Navigate to the URL that is printed
 
-## .NET Aspire local with Docker
+## .NET Aspire local with Docker (optional)
 
 1.  Run the following to build & launch both services locally
 

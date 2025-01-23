@@ -68,8 +68,10 @@ async def build_chat_results(chat_input: ChatInput):
         if not kubernetes_agent:
             yield f"Agent with ID {chat_input.agent_id} not found"
 
-        kubernetes_rest_api_plugin = KubernetesRestApiPlugin()
-        kernel.add_plugin(kubernetes_rest_api_plugin, "kubernetes_rest_api")
+        kubernetes_rest_api_plugin = KubernetesRestApiPlugin(aks_cluster_name=chat_input.aks_cluster_name,
+                                                             aks_access_token=chat_input.aks_access_token)
+        kernel.add_plugin(plugin=kubernetes_rest_api_plugin, 
+                          plugin_name="kubernetes_rest_api")
 
         await kubernetes_agent.add_chat_message(thread_id=chat_input.thread_id,
                                                 message=ChatMessageContent(role=AuthorRole.USER,

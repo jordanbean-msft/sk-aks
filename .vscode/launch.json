@@ -22,7 +22,7 @@
             "jinja": true,
             "cwd": "${workspaceFolder}/src/web",
             "env": {
-                "API_BASE_URL": "http://127.0.0.1:8000"
+                "services__api__api__0": "http://127.0.0.1:8000"
             }
           }
     ]
