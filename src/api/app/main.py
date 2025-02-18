@@ -4,18 +4,21 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-import app.temp_logging
-
 from app.routers import chat
 from app.routers import liveness, readiness, startup
+from .otel_logging import set_up_logging, set_up_tracing, set_up_metrics
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     yield
 
+set_up_logging()
+set_up_tracing()
+set_up_metrics()
+
 app = FastAPI(lifespan=lifespan, debug=True)
 
-logging.basicConfig(level=logging.DEBUG)
+#logging.basicConfig(level=logging.DEBUG)
 
 app.include_router(chat.router, prefix="/v1")
 app.include_router(liveness.router, prefix="/v1")

@@ -6,6 +6,7 @@ from yaml import load, Loader
 #from models import ChatCreateThreadInput, ChatInput
 from models.chat_create_thread_input import ChatCreateThreadInput
 from models.chat_input import ChatInput
+from semantic_kernel.contents import ChatHistory
 
 api_base_url = os.getenv("services__api__api__0")
 
@@ -76,9 +77,14 @@ def create_thread(agent_id):
 
     return None
 
-def chat(agent_id, thread_id, aks_access_token, aks_cluster_name, content):
-    chat_input = ChatInput(agent_id=agent_id,
-                           thread_id=thread_id,
+def chat(#agent_id, 
+         #thread_id, 
+         aks_access_token,
+         aks_cluster_name,
+         content):
+
+    chat_input = ChatInput(#agent_id=agent_id,
+                           #thread_id=thread_id,
                            aks_access_token=aks_access_token,
                            aks_cluster_name=aks_cluster_name,
                            content=content)
@@ -86,7 +92,7 @@ def chat(agent_id, thread_id, aks_access_token, aks_cluster_name, content):
     for event in requests.post(url=f"{api_base_url}/v1/chat",
                                json=chat_input.model_dump(mode="json"),
                                stream=True,
-                               timeout=30):
+                               timeout=60):
         yield event.decode('utf-8')
 
 __all__ = ["chat", "create_agent", "create_thread", "initiate_device_flow", "get_aks_access_token"]

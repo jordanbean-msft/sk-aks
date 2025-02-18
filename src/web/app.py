@@ -1,6 +1,8 @@
 import streamlit as st
 import time
 from services.chat import chat, create_agent, create_thread, initiate_device_flow, get_aks_access_token
+from semantic_kernel.contents.chat_history import ChatHistory
+from semantic_kernel.contents.utils.author_role import AuthorRole
 
 st.set_page_config(
     page_title="AKS AI Assistant",
@@ -17,55 +19,57 @@ st.title("AKS AI Assistant")
 
 # Initialize session state
 if "messages" not in st.session_state:
-    st.session_state.messages = []
+    st.session_state.messages = ChatHistory()
 
-if "agent_id" not in st.session_state:
-    with st.spinner("Creating agent..."):
-        st.session_state.agent_id = create_agent()
+#if "agent_id" not in st.session_state:
+#    with st.spinner("Creating agent..."):
+#        st.session_state.agent_id = create_agent()
 
-if "agent_id" in st.session_state and "thread_id" not in st.session_state:
-    with st.spinner("Creating thread..."):
-        st.session_state.thread_id = create_thread(st.session_state.agent_id)
+#if "agent_id" in st.session_state and "thread_id" not in st.session_state:
+#    with st.spinner("Creating thread..."):
+#        st.session_state.thread_id = create_thread(st.session_state.agent_id)
 
-if "agent_id" in st.session_state and "thread_id" in st.session_state and "aks_cluster_name" in st.session_state and "aks_access_token" in st.session_state:
+#if "agent_id" in st.session_state and "thread_id" in st.session_state and "aks_cluster_name" in st.session_state and "aks_access_token" in st.session_state:
+if "aks_cluster_name" in st.session_state and "aks_access_token" in st.session_state:
     # Display chat messages from history on app rerun
     for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.write(message["content"])
+        with st.chat_message(message.role):
+            st.write(message.content)
 
     # Accept user input
     if question := st.chat_input("Ask me about your AKS cluster..."):
         # Add user message to chat history
-        st.session_state.messages.append({"role": "user", "content": question})
+        st.session_state.messages.add_user_message(question)
         # Display user message in chat message container
-        with st.chat_message("user"):
+        with st.chat_message(AuthorRole.USER):
             st.markdown(question)
 
         # Display assistant response in chat message container
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
-                response = chat(agent_id=st.session_state.agent_id,
-                                thread_id=st.session_state.thread_id,
+                response = chat(#agent_id=st.session_state.agent_id,
+                                #thread_id=st.session_state.thread_id,
                                 aks_cluster_name=st.session_state.aks_cluster_name,
                                 aks_access_token=st.session_state.aks_access_token,
-                                content=question)
+                                #content=question)
+                                content=st.session_state.messages)
+                
                 full_response = st.write_stream(response)
 
-        st.session_state.messages.append({"role": "assistant", "content": full_response})
+        st.session_state.messages.add_assistant_message(full_response)
 
 if "aks_cluster_name" not in st.session_state and "aks_access_token" not in st.session_state:
     if aks_cluster_name := st.chat_input("Enter the name of your AKS cluster to get started."):
         st.session_state.aks_cluster_name = aks_cluster_name
-        st.session_state.messages.append({"role": "user", "content": f"AKS cluster name: {aks_cluster_name}"})
+        st.session_state.messages.add_user_message(f"AKS cluster name: {aks_cluster_name}")
 
         flow = initiate_device_flow(aks_cluster_name)
 
-        with st.chat_message(name="assistant"):
+        with st.chat_message(AuthorRole.ASSISTANT):
             st.write(flow["message"])
 
             with st.spinner("Waiting for authentication..."):
                 time.sleep(30)
                 st.session_state.aks_access_token = get_aks_access_token(aks_cluster_name, flow)
-
 
                 st.rerun()

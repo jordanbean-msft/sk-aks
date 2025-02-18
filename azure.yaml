@@ -2,7 +2,15 @@
 
 name: sk-aks
 services:  
-  app:
-    language: dotnet
-    project: ./src/SkAks.AppHost/SkAks.AppHost.csproj
-    host: containerapp
+  # app:
+  #   language: dotnet
+  #   project: ./src/SkAks.AppHost/SkAks.AppHost.csproj
+  #   host: containerapp
+  api:
+    project: ./src/api
+    language: python
+    host: aks
+  web:
+    project: ./src/web
+    language: python
+    host: aks

@@ -3,3 +3,5 @@ requests==2.32.3
 pyyaml==6.0.2
 msal==1.31.1
 pydantic==2.9.2
+sseclient==0.0.27
+semantic-kernel[azure]==1.21.1
