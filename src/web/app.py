@@ -1,11 +1,16 @@
 import streamlit as st
 import time
-import pandas as pd
 import json
 from io import StringIO
-from services.chat import chat, create_agent, create_thread, initiate_device_flow, get_aks_access_token
+
+import pandas as pd
+
+import matplotlib.pyplot as plt
+
 from semantic_kernel.contents.chat_history import ChatHistory
 from semantic_kernel.contents.utils.author_role import AuthorRole
+
+from services.chat import chat, create_agent, create_thread, initiate_device_flow, get_aks_access_token
 
 st.set_page_config(
     page_title="AKS AI Assistant",
@@ -46,7 +51,7 @@ def output_formatter(content):
             return df
 
         if content['content_type'] == "matplotlib":
-            return content['content']
+            return plt.figure(content['content'])
 
         if content['content_type'] == "image":
             return content['content']
@@ -83,7 +88,7 @@ if "aks_cluster_name" in st.session_state and "aks_access_token" in st.session_s
                                 aks_access_token=st.session_state.aks_access_token,
                                 #content=question)
                                 content=st.session_state.messages)
-                
+
                 with st.empty():
                     full_response = st.write_stream(response)
                     st.write(output_formatter(full_response))
