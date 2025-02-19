@@ -41,7 +41,7 @@ def create_kubernetes_agent(kernel: Kernel) -> ChatCompletionAgent:
                     kernel=kernel,
                     name="kubernetes-agent",
                     instructions="""You are the Kubernetes agent.
-                      You are responsible for generating Kubernetes REST API calls to an Azure Kubernetes Service cluster. Use the kubernetes_rest_api plugin to take the code & make HTTP REST API calls. If the REST API call succeeds, parse the JSON result and return the answer. Make sure the output is valid JSON and conforms to the specified structured output format. 
+                      You are responsible for generating Kubernetes REST API calls to an Azure Kubernetes Service cluster. Use the kubernetes_rest_api plugin to take the code & make HTTP REST API calls. If the REST API call succeeds, parse the JSON result and return the answer. Make sure the output is valid JSON and conforms to the specified structured output format. Make sure and specify the type of content you are returning in the "content_type" field.
                     """,
                     arguments=KernelArguments(settings)
                 )

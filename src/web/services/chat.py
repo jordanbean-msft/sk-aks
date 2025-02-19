@@ -3,6 +3,7 @@ import requests
 import json
 from msal import PublicClientApplication
 from yaml import load, Loader
+import pandas as pd
 #from models import ChatCreateThreadInput, ChatInput
 from models.chat_create_thread_input import ChatCreateThreadInput
 from models.chat_input import ChatInput
@@ -89,10 +90,11 @@ def chat(#agent_id,
                            aks_cluster_name=aks_cluster_name,
                            content=content)
 
-    for event in requests.post(url=f"{api_base_url}/v1/chat",
+    response = requests.post(url=f"{api_base_url}/v1/chat",
                                json=chat_input.model_dump(mode="json"),
                                stream=True,
-                               timeout=60):
-        yield event.decode('utf-8')
+                               timeout=60)
+
+    yield from (event.decode('utf-8') for event in response)
 
 __all__ = ["chat", "create_agent", "create_thread", "initiate_device_flow", "get_aks_access_token"]

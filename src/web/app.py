@@ -1,5 +1,8 @@
 import streamlit as st
 import time
+import pandas as pd
+import json
+from io import StringIO
 from services.chat import chat, create_agent, create_thread, initiate_device_flow, get_aks_access_token
 from semantic_kernel.contents.chat_history import ChatHistory
 from semantic_kernel.contents.utils.author_role import AuthorRole
@@ -29,12 +32,39 @@ if "messages" not in st.session_state:
 #    with st.spinner("Creating thread..."):
 #        st.session_state.thread_id = create_thread(st.session_state.agent_id)
 
+def output_formatter(content):
+    try:
+        content = json.loads(content)
+
+        if content['content_type'] == "markdown":
+            return content['content']
+
+        if content['content_type'] == "dataframe":
+            df = pd.read_csv(StringIO(content['content']), delimiter="|", skiprows=[1], skipinitialspace=True, engine='python')
+            df = df.loc[:, ~df.columns.str.contains('^Unnamed')].apply(lambda x: x.str.strip())
+
+            return df
+
+        if content['content_type'] == "matplotlib":
+            return content['content']
+
+        if content['content_type'] == "image":
+            return content['content']
+
+        return content['content']
+
+    except:
+        # if the content isn't json, return it as is
+        pass
+
+    return content
+
 #if "agent_id" in st.session_state and "thread_id" in st.session_state and "aks_cluster_name" in st.session_state and "aks_access_token" in st.session_state:
 if "aks_cluster_name" in st.session_state and "aks_access_token" in st.session_state:
     # Display chat messages from history on app rerun
     for message in st.session_state.messages:
         with st.chat_message(message.role):
-            st.write(message.content)
+            st.write(output_formatter(message.content))
 
     # Accept user input
     if question := st.chat_input("Ask me about your AKS cluster..."):
@@ -54,7 +84,9 @@ if "aks_cluster_name" in st.session_state and "aks_access_token" in st.session_s
                                 #content=question)
                                 content=st.session_state.messages)
                 
-                full_response = st.write_stream(response)
+                with st.empty():
+                    full_response = st.write_stream(response)
+                    st.write(output_formatter(full_response))
 
         st.session_state.messages.add_assistant_message(full_response)
 
