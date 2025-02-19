@@ -4,6 +4,8 @@ from semantic_kernel import Kernel
 #from semantic_kernel.agents.open_ai import AzureAssistantAgent
 from semantic_kernel.agents.chat_completion.chat_completion_agent import ChatCompletionAgent
 from semantic_kernel.connectors.ai.open_ai.services.azure_chat_completion import AzureChatCompletion
+from semantic_kernel.connectors.ai.function_choice_behavior import FunctionChoiceBehavior
+from semantic_kernel.functions.kernel_arguments import KernelArguments
 
 from app.config import get_settings
 from app.models.chat_output import ChatOutput
@@ -23,6 +25,7 @@ def create_kubernetes_agent(kernel: Kernel) -> ChatCompletionAgent:
 
     settings = kernel.get_prompt_execution_settings_from_service_id(service_id=service_id)
     settings.response_format = ChatOutput
+    settings.function_choice_behavior = FunctionChoiceBehavior.Auto()
     #settings.response_format = {
     #        "type": "json_schema",
     #        "json_schema": {
@@ -34,15 +37,13 @@ def create_kubernetes_agent(kernel: Kernel) -> ChatCompletionAgent:
 
     #agent = await AzureAssistantAgent.create(
     #agent = await ChatCompletionAgent.create(
-    agent = ChatCompletionAgent.model_construct(
+    agent = ChatCompletionAgent(
                     kernel=kernel,
                     name="kubernetes-agent",
                     instructions="""You are the Kubernetes agent.
                       You are responsible for generating Kubernetes REST API calls to an Azure Kubernetes Service cluster. Use the kubernetes_rest_api plugin to take the code & make HTTP REST API calls. If the REST API call succeeds, parse the JSON result and return the answer. Make sure the output is valid JSON and conforms to the specified structured output format. 
                     """,
-                    enable_code_interpreter=True,
-                    enable_file_search=False,
-                    execution_settings=settings
+                    arguments=KernelArguments(settings)
                 )
     
     return agent

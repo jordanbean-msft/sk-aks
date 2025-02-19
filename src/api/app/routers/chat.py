@@ -189,7 +189,10 @@ async def build_chat_results(chat_input: ChatInput):
         # the response includes a score that is greater than or equal to 70.
         termination_strategy = ThresholdTerminationStrategy(maximum_iterations=10)
 
-        group_chat = AgentGroupChat(termination_strategy=termination_strategy)
+        group_chat = AgentGroupChat(
+            #agents=[kubernetes_agent],
+            #termination_strategy=termination_strategy,
+        )
 
         for message in chat_input.content:
             await group_chat.add_chat_message(message=ChatMessageContent(role=message.role, content=message.content))
@@ -200,5 +203,6 @@ async def build_chat_results(chat_input: ChatInput):
         #async for content in kubernetes_agent.invoke_stream(
         #    thread_id=chat_input.thread_id
         #):
-        async for content in group_chat.invoke_stream(kubernetes_agent):
+        #async for content in group_chat.invoke_stream():
+        async for content in group_chat.invoke_stream_single_turn(kubernetes_agent):
             yield content.content
