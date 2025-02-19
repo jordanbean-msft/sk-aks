@@ -1,13 +1,11 @@
 import os
-import requests
 import json
+import requests
 from msal import PublicClientApplication
 from yaml import load, Loader
-import pandas as pd
-#from models import ChatCreateThreadInput, ChatInput
+
 from models.chat_create_thread_input import ChatCreateThreadInput
 from models.chat_input import ChatInput
-from semantic_kernel.contents import ChatHistory
 
 api_base_url = os.getenv("services__api__api__0")
 
@@ -37,7 +35,7 @@ def get_k8s_configuration(kubernetes_cluster_name):
 def initiate_device_flow(aks_cluster_name):
     path_to_k8s_configuration, base_url, args = get_k8s_configuration(aks_cluster_name)
 
-    app = PublicClientApplication(client_id=args['client-id'], 
+    app = PublicClientApplication(client_id=args['client-id'],
                                   authority=f"https://login.microsoftonline.com/{args['tenant-id']}")
     flow = app.initiate_device_flow(scopes=[f"{args['server-id']}/.default"])
 
@@ -78,15 +76,11 @@ def create_thread(agent_id):
 
     return None
 
-def chat(#agent_id, 
-         #thread_id, 
-         aks_access_token,
+def chat(aks_access_token,
          aks_cluster_name,
          content):
 
-    chat_input = ChatInput(#agent_id=agent_id,
-                           #thread_id=thread_id,
-                           aks_access_token=aks_access_token,
+    chat_input = ChatInput(aks_access_token=aks_access_token,
                            aks_cluster_name=aks_cluster_name,
                            content=content)
 

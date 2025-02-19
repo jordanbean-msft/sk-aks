@@ -1,20 +1,15 @@
-import os, logging
-import urllib
-import requests
-from requests.models import Response
+import os
+import logging
 from typing import Annotated
+import urllib
 from opentelemetry import trace
+import requests
 from yaml import load, Loader
 
 from semantic_kernel.functions.kernel_function_decorator import kernel_function
 
-from app.config import get_settings
-
-tracer = trace.get_tracer(__name__)
-
 logger = logging.getLogger("uvicorn.error")
 tracer = trace.get_tracer(__name__)
-
 
 class KubernetesRestApiPlugin:
     def __init__(self, aks_cluster_name: str, aks_access_token: str):
@@ -22,7 +17,7 @@ class KubernetesRestApiPlugin:
         self.aks_access_token = aks_access_token
 
     @tracer.start_as_current_span(name="call_kubernetes_rest_api")
-    @kernel_function(description="Executes a HTTP REST API call to the Kubernetes API")
+    @kernel_function(description="Executes a HTTP REST API call to the Kubernetes API. Make sure and only ask for the specific information you need (use filters, query, output, jsonpath, etc). The Kuberentes API can be very verbose and return a lot of JSON information.")
     async def call_kubernetes_rest_api(self,
                                        method: Annotated[str, "The HTTP REST API method (GET, POST, PUT, etc) to make"],
                                        url: Annotated[str, "The HTTP REST API URL to call"],

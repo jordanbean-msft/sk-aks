@@ -2,26 +2,21 @@ import logging
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
-from sse_starlette import EventSourceResponse
 from opentelemetry import trace
-from pydantic import BaseModel, ValidationError
 
 from semantic_kernel import Kernel
 from semantic_kernel.agents.open_ai import AzureAssistantAgent
 from semantic_kernel.contents.chat_message_content import ChatMessageContent
-from semantic_kernel.contents.utils.author_role import AuthorRole
-from semantic_kernel.connectors.ai.open_ai.services.azure_chat_completion import AzureChatCompletion
-from semantic_kernel.agents import AgentGroupChat, ChatCompletionAgent
-from semantic_kernel.agents.strategies import TerminationStrategy
-from semantic_kernel.contents import AuthorRole, ChatMessageContent
+from semantic_kernel.agents import AgentGroupChat
+from semantic_kernel.functions.kernel_function_from_prompt import KernelFunctionFromPrompt
 
 from app.models.chat_input import ChatInput
 from app.models.chat_create_thread_input import ChatCreateThreadInput
 from app.models.chat_get_thread import ChatGetThreadInput
 from app.plugins.kubernetes_rest_api_plugin import KubernetesRestApiPlugin
+from app.plugins.azure_monitor_plugin import AzureMonitorPlugin
 from app.agents.kubernetes_agent import create_kubernetes_agent
 from app.config import get_settings
-from app.models.chat_output import ChatOutput
 
 logger = logging.getLogger("uvicorn.error")
 tracer = trace.get_tracer(__name__)
@@ -122,76 +117,36 @@ async def thread_generator(thread):
 @router.post("/chat")
 async def post_chat(chat_input: ChatInput):
     return StreamingResponse(build_chat_results(chat_input))
-    #return EventSourceResponse(build_chat_results(chat_input))
-
-class ThresholdTerminationStrategy(TerminationStrategy):
-    """A strategy for determining when an agent should terminate."""
-
-    threshold: int = 70
-
-    async def should_agent_terminate(self, agent, history):
-        """Check if the agent should terminate."""
-        try:
-            result = ChatOutput.model_validate_json(history[-1].content or "")
-            return result.score >= self.threshold
-        except ValidationError:
-            return False
-
+    
 async def build_chat_results(chat_input: ChatInput):
     with tracer.start_as_current_span(name="build_chat_results"):
         kernel = Kernel()
 
-        service_id = "azure_chat_completion"
-
-        # kernel.add_service(AzureChatCompletion(
-        #         service_id=service_id,
-        #         endpoint=get_settings().azure_openai_endpoint,
-        #         api_key=get_settings().azure_openai_api_key,
-        #         api_version=get_settings().azure_openai_api_version,
-        #         deployment_name=get_settings().azure_openai_chat_deployment_name))
-
-        # settings = kernel.get_prompt_execution_settings_from_service_id(service_id=service_id)
-        # settings.response_format = ChatOutput        
-
-        # kubernetes_agent = await AzureAssistantAgent.retrieve(
-        #     id=chat_input.agent_id,
-        #     kernel=kernel,
-        #     endpoint=get_settings().azure_openai_endpoint,
-        #     api_key=get_settings().azure_openai_api_key,
-        #     api_version=get_settings().azure_openai_api_version,
-        #     )
         kubernetes_agent = create_kubernetes_agent(kernel)
-
-        #if not kubernetes_agent:
-        #    yield f"Agent with ID {chat_input.agent_id} not found"        
-        
-        #kubernetes_agent.assistant.response_format = ChatOutput
-        #kubernetes_agent.enable_json_response = True
-        #kubernetes_agent.assistant.response_format = {
-        #    "type": "json_schema",
-        #    "json_schema": {
-        #        "name": "chat_output_schema",
-        #        "schema": ChatOutput.model_json_schema()
-        #    },
-        #   "strict": True,
-        #}
 
         kubernetes_rest_api_plugin = KubernetesRestApiPlugin(aks_cluster_name=chat_input.aks_cluster_name,
                                                              aks_access_token=chat_input.aks_access_token)
 
         kernel.add_plugin(plugin=kubernetes_rest_api_plugin,
                           plugin_name="kubernetes_rest_api")
+        kernel.add_plugin(plugin=AzureMonitorPlugin(aks_cluster_name=chat_input.aks_cluster_name),
+                          plugin_name="azure_monitor")
 
-        #await kubernetes_agent.add_chat_message(thread_id=chat_input.thread_id,
-        #                                        message=ChatMessageContent(role=AuthorRole.USER,
-        #                                                                   content=chat_input.content))
-        # Here a TerminationStrategy subclass is used that will terminate when
-        # the response includes a score that is greater than or equal to 70.
-        termination_strategy = ThresholdTerminationStrategy(maximum_iterations=10)
+#         termination_function = KernelFunctionFromPrompt(
+#             function_name="termination",
+#             prompt="""
+#                 Detemrine if the conversation should be terminated. If there was a failed function call, you should try again a few times and correct the input.
+# """
+#         )
 
         group_chat = AgentGroupChat(
-            #agents=[kubernetes_agent],
-            #termination_strategy=termination_strategy,
+            agents=[kubernetes_agent],
+            # termination_strategy=KernelFunctionTerminationStrategy(
+            #     agents=[kubernetes_agent],
+            #     function=termination_function,
+            #     kernel=kernel,
+            #     maximum_iterations=10
+            # )
         )
 
         for message in chat_input.content:
@@ -204,5 +159,5 @@ async def build_chat_results(chat_input: ChatInput):
         #    thread_id=chat_input.thread_id
         #):
         #async for content in group_chat.invoke_stream():
-        async for content in group_chat.invoke_stream_single_turn(kubernetes_agent):
+        async for content in group_chat.invoke_stream():
             yield content.content
