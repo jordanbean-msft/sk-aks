@@ -22,14 +22,18 @@ from opentelemetry.trace import set_tracer_provider
 
 from app.config.config import get_settings
 
-# Replace the connection string with your Application Insights connection string
-connection_string = get_settings().application_insights_connection_string
+def setup_logging():
+    # Replace the connection string with your Application Insights connection string
+    connection_string = get_settings().application_insights_connection_string
 
-# Create a resource to represent the service/sample
-resource = Resource.create({ResourceAttributes.SERVICE_NAME: "sk-aks"})
+    # Create a resource to represent the service/sample
+    resource = Resource.create({ResourceAttributes.SERVICE_NAME: "sk-aks"})
 
+    set_up_logging(connection_string=connection_string, resource=resource)
+    set_up_tracing(connection_string=connection_string, resource=resource)
+    set_up_metrics(connection_string=connection_string, resource=resource)
 
-def set_up_logging():
+def set_up_logging(connection_string, resource):
     exporter = AzureMonitorLogExporter(connection_string=connection_string)
 
     # Create and set a global logger provider for the application.
@@ -51,7 +55,7 @@ def set_up_logging():
     logger.setLevel(logging.INFO)
 
 
-def set_up_tracing():
+def set_up_tracing(connection_string, resource):
     exporter = AzureMonitorTraceExporter(connection_string=connection_string)
 
     # Initialize a trace provider for the application. This is a factory for creating tracers.
@@ -63,7 +67,7 @@ def set_up_tracing():
     set_tracer_provider(tracer_provider)
 
 
-def set_up_metrics():
+def set_up_metrics(connection_string, resource):
     exporter = AzureMonitorMetricExporter(connection_string=connection_string)
 
     # Initialize a metric provider for the application. This is a factory for creating meters.
@@ -79,4 +83,4 @@ def set_up_metrics():
     # Sets the global default meter provider
     set_meter_provider(meter_provider)
 
-__all__ = ["set_up_logging", "set_up_tracing", "set_up_metrics"]
+__all__ = ["setup"]

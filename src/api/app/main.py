@@ -6,15 +6,13 @@ from fastapi import FastAPI
 
 from app.routers import chat
 from app.routers import liveness, readiness, startup
-from .otel_logging import set_up_logging, set_up_tracing, set_up_metrics
+from .otel_logging import setup_logging
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     yield
 
-set_up_logging()
-set_up_tracing()
-set_up_metrics()
+setup_logging()
 
 app = FastAPI(lifespan=lifespan, debug=True)
 
