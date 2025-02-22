@@ -17,11 +17,11 @@ from app.models.chat_output import ChatOutput
 
 logger = logging.getLogger("uvicorn.error")
 
-async def create_kubernetes_agent(client, ai_agent_settings, kernel) -> AzureAIAgent:
+async def create_azure_monitor_agent(client, ai_agent_settings, kernel) -> AzureAIAgent:
     agent_definition = await client.agents.create_agent(
         model=ai_agent_settings.model_deployment_name,
         instructions="""
-          You are a helpful assistant that can interpret and make recommendations for optimizing a Kubernetes cluster. You will read the JSON input which is time series data from Azure Monitor and provide recommendations for optimizing the Kubernetes cluster.
+          You are a helpful assistant that can query Azure Monitor for Kubernetes Prometheus monitoring logs.
         """
     )
 
@@ -33,4 +33,4 @@ async def create_kubernetes_agent(client, ai_agent_settings, kernel) -> AzureAIA
 
     return agent
 
-__all__ = ["create_kubernetes_agent"]
+__all__ = ["create_azure_monitor_agent"]

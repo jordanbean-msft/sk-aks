@@ -23,6 +23,7 @@ class AzureMonitorPlugin:
     async def call_azure_monitor(self,
                                 method: Annotated[str, "The HTTP REST API method (GET, POST) to make"],
                                 url: Annotated[str, "The HTTP REST API URL to call. This should only be the Prometheus HTTP API path (using the v1 API specification), not the full URL"],
+                                params: Annotated[str, "The HTTP REST API query parameters to pass in. This should be a valid query string to append to the URL."],
                                 body: Annotated[str,
                                                 "The HTTP REST API body to pass in. This should be a valid PromQL query if the method is POST."]
                                 ) -> Annotated[str, "The result of the HTTP REST API call"]:
@@ -32,6 +33,7 @@ class AzureMonitorPlugin:
             result = requests.request(
                 method=method,
                 url=urllib.parse.urljoin(get_settings().azure_monitor_query_endpoint, url),
+                params=params,
                 timeout=10,
                 headers={
                     "Authorization": f"Bearer {access_token}"
@@ -41,6 +43,7 @@ class AzureMonitorPlugin:
             result = requests.request(
                 method=method,
                 url=urllib.parse.urljoin(get_settings().azure_monitor_query_endpoint, url),
+                params=params,
                 data=urllib.parse.quote(body),
                 timeout=10,
                 headers={

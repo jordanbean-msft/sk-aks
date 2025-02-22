@@ -9,6 +9,12 @@ from semantic_kernel.agents.open_ai import AzureAssistantAgent
 from semantic_kernel.contents.chat_message_content import ChatMessageContent
 from semantic_kernel.agents import AgentGroupChat
 from semantic_kernel.functions.kernel_function_from_prompt import KernelFunctionFromPrompt
+from azure.ai.projects.models import CodeInterpreterTool
+from azure.identity.aio import DefaultAzureCredential
+
+from semantic_kernel.agents.azure_ai import AzureAIAgent, AzureAIAgentSettings
+from semantic_kernel.contents.chat_message_content import ChatMessageContent
+from semantic_kernel.contents.utils.author_role import AuthorRole
 
 from app.models.chat_input import ChatInput
 from app.models.chat_create_thread_input import ChatCreateThreadInput
@@ -16,6 +22,7 @@ from app.models.chat_get_thread import ChatGetThreadInput
 from app.plugins.kubernetes_rest_api_plugin import KubernetesRestApiPlugin
 from app.plugins.azure_monitor_plugin import AzureMonitorPlugin
 from app.agents.kubernetes_agent import create_kubernetes_agent
+from app.agents.azure_monitor_agent import create_azure_monitor_agent
 from app.config import get_settings
 
 logger = logging.getLogger("uvicorn.error")
@@ -23,91 +30,91 @@ tracer = trace.get_tracer(__name__)
 
 router = APIRouter()
 
-@tracer.start_as_current_span(name="create_agent")
-@router.post("/create_agent")
-async def post_create_agent():
-    kernel = Kernel()
+# @tracer.start_as_current_span(name="create_agent")
+# @router.post("/create_agent")
+# async def post_create_agent():
+#     kernel = Kernel()
 
-    kubernetes_agent = await create_kubernetes_agent(kernel)
+#     kubernetes_agent = await create_kubernetes_agent(kernel)
 
-    return {"agent_id": kubernetes_agent.assistant.id}
+#     return {"agent_id": kubernetes_agent.assistant.id}
 
-@tracer.start_as_current_span(name="get_agent")
-@router.get("/get_agent")
-async def get_agent(agent_id: str):
-    kernel = Kernel()
+# @tracer.start_as_current_span(name="get_agent")
+# @router.get("/get_agent")
+# async def get_agent(agent_id: str):
+#     kernel = Kernel()
 
-    kubernetes_agent = await AzureAssistantAgent.retrieve(
-        id=agent_id,
-        kernel=kernel,
-        endpoint=get_settings().azure_openai_endpoint,
-        api_key=get_settings().azure_openai_api_key,
-        api_version=get_settings().azure_openai_api_version
-        )
+#     kubernetes_agent = await AzureAssistantAgent.retrieve(
+#         id=agent_id,
+#         kernel=kernel,
+#         endpoint=get_settings().azure_openai_endpoint,
+#         api_key=get_settings().azure_openai_api_key,
+#         api_version=get_settings().azure_openai_api_version
+#         )
 
-    if not kubernetes_agent:
-        return {"error": f"Agent with ID {agent_id} not found"}
+#     if not kubernetes_agent:
+#         return {"error": f"Agent with ID {agent_id} not found"}
 
-    return kubernetes_agent
+#     return kubernetes_agent
 
-@tracer.start_as_current_span(name="create_thread")
-@router.post("/create_thread")
-async def post_create_thread(agent_input: ChatCreateThreadInput):
-    kernel = Kernel()
+# @tracer.start_as_current_span(name="create_thread")
+# @router.post("/create_thread")
+# async def post_create_thread(agent_input: ChatCreateThreadInput):
+#     kernel = Kernel()
 
-    kubernetes_agent = await AzureAssistantAgent.retrieve(
-        id=agent_input.agent_id,
-        kernel=kernel,
-        endpoint=get_settings().azure_openai_endpoint,
-        api_key=get_settings().azure_openai_api_key,
-        api_version=get_settings().azure_openai_api_version
-        )
+#     kubernetes_agent = await AzureAssistantAgent.retrieve(
+#         id=agent_input.agent_id,
+#         kernel=kernel,
+#         endpoint=get_settings().azure_openai_endpoint,
+#         api_key=get_settings().azure_openai_api_key,
+#         api_version=get_settings().azure_openai_api_version
+#         )
 
-    if not kubernetes_agent:
-        return {"error": f"Agent with ID {agent_input.agent_id} not found"}
+#     if not kubernetes_agent:
+#         return {"error": f"Agent with ID {agent_input.agent_id} not found"}
 
-    thread_id = await kubernetes_agent.create_thread()
+#     thread_id = await kubernetes_agent.create_thread()
 
-    return {"thread_id": thread_id}
+#     return {"thread_id": thread_id}
 
-@tracer.start_as_current_span(name="get_thread")
-@router.get("/get_thread")
-async def get_thread(thread_input: ChatGetThreadInput):
-    kernel = Kernel()
+# @tracer.start_as_current_span(name="get_thread")
+# @router.get("/get_thread")
+# async def get_thread(thread_input: ChatGetThreadInput):
+#     kernel = Kernel()
 
-    kubernetes_agent = await AzureAssistantAgent.retrieve(
-        id=thread_input.agent_id,
-        kernel=kernel,
-        endpoint=get_settings().azure_openai_endpoint,
-        api_key=get_settings().azure_openai_api_key,
-        api_version=get_settings().azure_openai_api_version
-        )
+#     kubernetes_agent = await AzureAssistantAgent.retrieve(
+#         id=thread_input.agent_id,
+#         kernel=kernel,
+#         endpoint=get_settings().azure_openai_endpoint,
+#         api_key=get_settings().azure_openai_api_key,
+#         api_version=get_settings().azure_openai_api_version
+#         )
 
-    if not kubernetes_agent:
-        return {"error": f"Agent with ID {thread_input.agent_id} not found"}
+#     if not kubernetes_agent:
+#         return {"error": f"Agent with ID {thread_input.agent_id} not found"}
 
-    thread = kubernetes_agent.get_thread_messages(thread_input.thread_id)
+#     thread = kubernetes_agent.get_thread_messages(thread_input.thread_id)
 
-    real_thread_messages = []
-    real_run_messages = []
-    real_thread = await kubernetes_agent.client.beta.threads.messages.list(thread_id=thread_input.thread_id)
+#     real_thread_messages = []
+#     real_run_messages = []
+#     real_thread = await kubernetes_agent.client.beta.threads.messages.list(thread_id=thread_input.thread_id)
 
-    for message in real_thread.data:
-        if message.run_id is not None:
-            run_steps = await kubernetes_agent.client.beta.threads.runs.steps.list(thread_id=thread_input.thread_id, run_id = message.run_id)
-            for run_step in run_steps.data:
-                real_run_messages.append(run_step)
-        real_thread_messages.append(message)
+#     for message in real_thread.data:
+#         if message.run_id is not None:
+#             run_steps = await kubernetes_agent.client.beta.threads.runs.steps.list(thread_id=thread_input.thread_id, run_id = message.run_id)
+#             for run_step in run_steps.data:
+#                 real_run_messages.append(run_step)
+#         real_thread_messages.append(message)
 
-    if not thread:
-        return {"error": f"Thread with ID {thread_input.thread_id} not found"}
+#     if not thread:
+#         return {"error": f"Thread with ID {thread_input.thread_id} not found"}
 
-    return_value = []
+#     return_value = []
 
-    async for chunk in thread_generator(thread):
-        return_value.append(chunk)
+#     async for chunk in thread_generator(thread):
+#         return_value.append(chunk)
 
-    return return_value
+#     return return_value
 
 async def thread_generator(thread):
     async for message in thread:
@@ -117,47 +124,72 @@ async def thread_generator(thread):
 @router.post("/chat")
 async def post_chat(chat_input: ChatInput):
     return StreamingResponse(build_chat_results(chat_input))
-    
+
 async def build_chat_results(chat_input: ChatInput):
     with tracer.start_as_current_span(name="build_chat_results"):
-        kernel = Kernel()
+        try:
+            ai_agent_settings = AzureAIAgentSettings(
+                model_deployment_name=get_settings().azure_openai_model_deployment_name,
+                project_connection_string=get_settings().azure_ai_agent_project_connection_string
+            )
+            async with (
+                DefaultAzureCredential() as creds,
 
-        kubernetes_agent = create_kubernetes_agent(kernel)
+                AzureAIAgent.create_client(
+                    credential=creds,
+                    conn_str=ai_agent_settings.project_connection_string.get_secret_value()
+                ) as client,
+            ):
+            
+                thread = await client.agents.create_thread()
 
-        kubernetes_rest_api_plugin = KubernetesRestApiPlugin(aks_cluster_name=chat_input.aks_cluster_name,
-                                                             aks_access_token=chat_input.aks_access_token)
+                kernel = Kernel()
 
-        kernel.add_plugin(plugin=kubernetes_rest_api_plugin,
-                          plugin_name="kubernetes_rest_api")
-        kernel.add_plugin(plugin=AzureMonitorPlugin(aks_cluster_name=chat_input.aks_cluster_name),
-                          plugin_name="azure_monitor")
+                azure_monitor_agent = await create_azure_monitor_agent(
+                    client=client,
+                    ai_agent_settings=ai_agent_settings,
+                    kernel=kernel
+                )
 
-#         termination_function = KernelFunctionFromPrompt(
-#             function_name="termination",
-#             prompt="""
-#                 Detemrine if the conversation should be terminated. If there was a failed function call, you should try again a few times and correct the input.
-# """
-#         )
+                kernel.add_plugin(plugin=AzureMonitorPlugin(aks_cluster_name=chat_input.aks_cluster_name),
+                                plugin_name="azure_monitor")
 
-        group_chat = AgentGroupChat(
-            agents=[kubernetes_agent],
-            # termination_strategy=KernelFunctionTerminationStrategy(
-            #     agents=[kubernetes_agent],
-            #     function=termination_function,
-            #     kernel=kernel,
-            #     maximum_iterations=10
-            # )
-        )
 
-        for message in chat_input.content:
-            await group_chat.add_chat_message(message=ChatMessageContent(role=message.role, content=message.content))
+                for message in chat_input.content:
+                    await azure_monitor_agent.add_chat_message(
+                        thread_id=thread.id,
+                        message=ChatMessageContent(role=message.role, content=message.content)
+                    )
 
-        #await group_chat.add_chat_message(message=ChatMessageContent(role=AuthorRole.USER,
-        #                                                                   content=chat_input.content))
+                # async for content in azure_monitor_agent.invoke_stream(thread_id=thread.id):
+                #     yield content.content
+                async for content in azure_monitor_agent.invoke(thread_id=thread.id):
+                    logger.debug(content.content)
 
-        #async for content in kubernetes_agent.invoke_stream(
-        #    thread_id=chat_input.thread_id
-        #):
-        #async for content in group_chat.invoke_stream():
-        async for content in group_chat.invoke_stream():
-            yield content.content
+                new_kernel = Kernel()
+
+                kubernetes_agent = await create_kubernetes_agent(
+                    client=client,
+                    ai_agent_settings=ai_agent_settings,
+                    kernel=new_kernel
+                )
+
+                code_interpreter = CodeInterpreterTool()
+
+                kubernetes_agent.definition.tools=code_interpreter.definitions
+                kubernetes_agent.definition.tool_resources=code_interpreter.resources
+
+                for message in chat_input.content:
+                    await kubernetes_agent.add_chat_message(
+                        thread_id=thread.id,
+                        message=ChatMessageContent(role=message.role, content=message.content)
+                    )
+
+                async for content in kubernetes_agent.invoke_stream(thread_id=thread.id):
+                    yield content.content
+        except Exception as e:
+            logger.error(f"Error processing chat: {e}")
+        finally:
+            await client.agents.delete_thread(thread_id=thread.id)
+            await client.agents.delete_agent(agent_id=azure_monitor_agent.id)
+            await client.agents.delete_agent(agent_id=kubernetes_agent.id)

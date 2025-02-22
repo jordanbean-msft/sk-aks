@@ -3,11 +3,8 @@ from functools import lru_cache
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    azure_openai_endpoint: str
-    azure_openai_api_version: str
-    azure_openai_chat_deployment_name: str
-    azure_openai_embedding_deployment_name: str
-    azure_openai_api_key: str
+    azure_openai_model_deployment_name: str
+    azure_ai_agent_project_connection_string: str
     application_insights_connection_string: str
     client_id: str
     client_secret: str

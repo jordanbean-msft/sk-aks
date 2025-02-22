@@ -25,7 +25,7 @@ st.title("AKS AI Assistant")
 if "messages" not in st.session_state:
     st.session_state.messages = ChatHistory()
 
-if "aks_cluster_name" in st.session_state and "aks_access_token" in st.session_state:
+if "aks_cluster_name" in st.session_state:
     # Display chat messages from history on app rerun
     for message in st.session_state.messages:
         with st.chat_message(message.role):
@@ -51,19 +51,3 @@ if "aks_cluster_name" in st.session_state and "aks_access_token" in st.session_s
                     st.write(output_formatter(full_response))
 
         st.session_state.messages.add_assistant_message(full_response)
-
-if "aks_cluster_name" not in st.session_state and "aks_access_token" not in st.session_state:
-    if aks_cluster_name := st.chat_input("Enter the name of your AKS cluster to get started."):
-        st.session_state.aks_cluster_name = aks_cluster_name
-        st.session_state.messages.add_user_message(f"AKS cluster name: {aks_cluster_name}")
-
-        flow = initiate_device_flow(aks_cluster_name)
-
-        with st.chat_message(AuthorRole.ASSISTANT):
-            st.write(flow["message"])
-
-            with st.spinner("Waiting for authentication..."):
-                time.sleep(30)
-                st.session_state.aks_access_token = get_aks_access_token(aks_cluster_name, flow)
-
-                st.rerun()
