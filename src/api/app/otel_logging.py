@@ -19,12 +19,16 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.trace import set_tracer_provider
+from azure.core.settings import settings
+from azure.core.tracing.ext.opentelemetry_span import OpenTelemetrySpan
 
 from app.config.config import get_settings
 
 def setup_logging():
     # Replace the connection string with your Application Insights connection string
     connection_string = get_settings().application_insights_connection_string
+
+    settings.tracing_implementation = OpenTelemetrySpan
 
     # Create a resource to represent the service/sample
     resource = Resource.create({ResourceAttributes.SERVICE_NAME: "sk-aks"})
@@ -83,4 +87,4 @@ def set_up_metrics(connection_string, resource):
     # Sets the global default meter provider
     set_meter_provider(meter_provider)
 
-__all__ = ["setup"]
+__all__ = ["setup_logging"]

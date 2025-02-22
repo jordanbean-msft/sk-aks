@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 
 from semantic_kernel import Kernel
 #from semantic_kernel.agents.open_ai import AzureAssistantAgent
@@ -20,8 +21,9 @@ logger = logging.getLogger("uvicorn.error")
 async def create_azure_monitor_agent(client, ai_agent_settings, kernel) -> AzureAIAgent:
     agent_definition = await client.agents.create_agent(
         model=ai_agent_settings.model_deployment_name,
-        instructions="""
-          You are a helpful assistant that can query Azure Monitor for Kubernetes Prometheus monitoring logs.
+        name="azure-monitor-agent",
+        instructions=f"""
+          You are a helpful assistant that can query Azure Monitor for Kubernetes Prometheus monitoring logs. The current datetime is {datetime.now().isoformat()}.
         """
     )
 

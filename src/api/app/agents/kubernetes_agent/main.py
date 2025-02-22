@@ -18,11 +18,16 @@ from app.models.chat_output import ChatOutput
 logger = logging.getLogger("uvicorn.error")
 
 async def create_kubernetes_agent(client, ai_agent_settings, kernel) -> AzureAIAgent:
+    code_interpreter = CodeInterpreterTool()
+
     agent_definition = await client.agents.create_agent(
         model=ai_agent_settings.model_deployment_name,
+        name="kubernetes-agent",
         instructions="""
-          You are a helpful assistant that can interpret and make recommendations for optimizing a Kubernetes cluster. You will read the JSON input which is time series data from Azure Monitor and provide recommendations for optimizing the Kubernetes cluster.
-        """
+          You are a helpful assistant that can interpret and make recommendations for optimizing a Kubernetes cluster. You will read the JSON input which is time series data from Azure Monitor and provide recommendations for optimizing the Kubernetes cluster. You will read in the file_id provided and use your code interpreter to read the JSON file and provide recommendations for optimizing the Kubernetes cluster.
+        """,
+        tools=code_interpreter.definitions,
+        tool_resources=code_interpreter.resources
     )
 
     agent = AzureAIAgent(

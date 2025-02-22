@@ -153,7 +153,14 @@ async def build_chat_results(chat_input: ChatInput):
 
                 kernel.add_plugin(plugin=AzureMonitorPlugin(aks_cluster_name=chat_input.aks_cluster_name),
                                 plugin_name="azure_monitor")
+                
+                new_kernel = Kernel()
 
+                kubernetes_agent = await create_kubernetes_agent(
+                    client=client,
+                    ai_agent_settings=ai_agent_settings,
+                    kernel=new_kernel
+                )                
 
                 for message in chat_input.content:
                     await azure_monitor_agent.add_chat_message(
@@ -161,35 +168,19 @@ async def build_chat_results(chat_input: ChatInput):
                         message=ChatMessageContent(role=message.role, content=message.content)
                     )
 
-                # async for content in azure_monitor_agent.invoke_stream(thread_id=thread.id):
-                #     yield content.content
                 async for content in azure_monitor_agent.invoke(thread_id=thread.id):
-                    logger.debug(content.content)
-
-                new_kernel = Kernel()
-
-                kubernetes_agent = await create_kubernetes_agent(
-                    client=client,
-                    ai_agent_settings=ai_agent_settings,
-                    kernel=new_kernel
-                )
-
-                code_interpreter = CodeInterpreterTool()
-
-                kubernetes_agent.definition.tools=code_interpreter.definitions
-                kubernetes_agent.definition.tool_resources=code_interpreter.resources
-
-                for message in chat_input.content:
-                    await kubernetes_agent.add_chat_message(
-                        thread_id=thread.id,
-                        message=ChatMessageContent(role=message.role, content=message.content)
-                    )
+                    #logger.debug(content.content)
+                    yield content.content
 
                 async for content in kubernetes_agent.invoke_stream(thread_id=thread.id):
                     yield content.content
+
+                await client.agents.delete_thread(thread_id=thread.id)
+                await client.agents.delete_agent(assistant_id=azure_monitor_agent.id)
+                await client.agents.delete_agent(assistant_id=kubernetes_agent.id)
         except Exception as e:
             logger.error(f"Error processing chat: {e}")
-        finally:
+
             await client.agents.delete_thread(thread_id=thread.id)
-            await client.agents.delete_agent(agent_id=azure_monitor_agent.id)
-            await client.agents.delete_agent(agent_id=kubernetes_agent.id)
+            await client.agents.delete_agent(assistant_id=azure_monitor_agent.id)
+            await client.agents.delete_agent(assistant_id=kubernetes_agent.id)

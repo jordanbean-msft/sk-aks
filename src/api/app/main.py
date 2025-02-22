@@ -16,8 +16,6 @@ setup_logging()
 
 app = FastAPI(lifespan=lifespan, debug=True)
 
-#logging.basicConfig(level=logging.DEBUG)
-
 app.include_router(chat.router, prefix="/v1")
 app.include_router(liveness.router, prefix="/v1")
 app.include_router(readiness.router, prefix="/v1")
