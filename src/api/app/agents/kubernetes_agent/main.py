@@ -24,7 +24,7 @@ async def create_kubernetes_agent(client, ai_agent_settings, kernel) -> AzureAIA
         model=ai_agent_settings.model_deployment_name,
         name="kubernetes-agent",
         instructions="""
-          You are a helpful assistant that can interpret and make recommendations for optimizing a Kubernetes cluster. You will read the JSON input which is time series data from Azure Monitor and provide recommendations for optimizing the Kubernetes cluster. You will read in the file_id provided and use your code interpreter to read the JSON file and provide recommendations for optimizing the Kubernetes cluster.
+          You are a helpful assistant that can interpret and make recommendations for optimizing a Kubernetes cluster. You will read the JSON input which is time series data from Azure Monitor and provide recommendations for optimizing the Kubernetes cluster. You will read in the file_id provided and use your code interpreter to read the JSON file and provide recommendations for optimizing the Kubernetes cluster. You will also generate a matplotlib graph of the data.
         """,
         tools=code_interpreter.definitions,
         tool_resources=code_interpreter.resources

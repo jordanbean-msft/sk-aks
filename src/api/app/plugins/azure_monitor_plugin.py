@@ -18,8 +18,10 @@ tracer = trace.get_tracer(__name__)
 
 
 class AzureMonitorPlugin:
-    def __init__(self, aks_cluster_name: str):
+    def __init__(self, aks_cluster_name: str, kubernetes_agent_id: str, thread_id: str):
         self.aks_cluster_name = aks_cluster_name
+        self.kubernetes_agent_id = kubernetes_agent_id
+        self.thread_id = thread_id
 
     @tracer.start_as_current_span(name="call_azure_monitor")
     @kernel_function(description="Executes a HTTP REST API call to the Azure Monitor API, using the Prometheus query language (PromQL) for querying and aggregating metrics & time series data.")
@@ -86,12 +88,7 @@ class AzureMonitorPlugin:
                         purpose="assistants"
                     )
 
-                    agents = await client.agents.list_agents()
-
-                    for agent in agents.data:
-                        if agent['name'] == "kubernetes-agent":
-                            kubernetes_agent = agent
-                            break
+                    kubernetes_agent = await client.agents.get_agent(assistant_id=self.kubernetes_agent_id)
 
                     code_interpreter = CodeInterpreterTool(
                         file_ids=[file_upload.id]
