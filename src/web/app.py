@@ -77,4 +77,4 @@ if "aks_cluster_name" in st.session_state and "thread_id" in st.session_state:
             if image_content["type"] == "image_file":
                 image = get_image(file_id=image_content["file_id"])
 
-                st.session_state.messages.add_assistant_message(image)
+                st.image(image=image, use_container_width=True)
