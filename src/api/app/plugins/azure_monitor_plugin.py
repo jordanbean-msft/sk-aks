@@ -1,6 +1,7 @@
 import logging
 import urllib
 import json
+import csv
 from typing import Annotated
 import requests
 from opentelemetry import trace
@@ -145,9 +146,38 @@ class AzureMonitorPlugin:
             with open(file=file_path, mode="w", encoding="utf-8") as file:
                 json.dump(result.json(), file)
 
+            csv_file_path = "azure_monitor_result.csv"
+            with open(file=csv_file_path, mode="w", encoding="utf-8") as csv_file:
+                data = result.json()
+                csv_writer = csv.writer(csv_file)
+                # Write the header
+                header = ["cluster", "container", "cpu", "id", "image", "instance", "job", "name", "namespace", "pod", "timestamp", "value"]
+                csv_writer.writerow(header)
+
+                # Write the data
+                for result in data["data"]["result"]:
+                    metric = result["metric"]
+                    for value in result["values"]:
+                        row = [
+                            metric.get("cluster", ""),
+                            metric.get("container", ""),
+                            metric.get("cpu", ""),
+                            metric.get("id", ""),
+                            metric.get("image", ""),
+                            metric.get("instance", ""),
+                            metric.get("job", ""),
+                            metric.get("name", ""),
+                            metric.get("namespace", ""),
+                            metric.get("pod", ""),
+                            value[0],
+                            value[1]
+                        ]
+                        csv_writer.writerow(row)
+
             # Upload the file to the Azure AI agent
             file_upload = await client.agents.upload_file(
-                file_path=file_path,
+                #file_path=file_path,
+                file_path=csv_file_path,
                 purpose="assistants"
             )
 

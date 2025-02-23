@@ -24,78 +24,21 @@ async def create_kubernetes_agent(client, ai_agent_settings, kernel) -> AzureAIA
         model=ai_agent_settings.model_deployment_name,
         name="kubernetes-agent",
         instructions="""
-          You are a helpful assistant that can interpret and make recommendations for optimizing a Kubernetes cluster. You will read the JSON input which is time series data from Azure Monitor and provide recommendations for optimizing the Kubernetes cluster. You will read in the file_id provided and use your code interpreter to read the JSON file and provide recommendations for optimizing the Kubernetes cluster. You will also generate a matplotlib graph of the data.
+          You are a helpful assistant that can interpret and make recommendations for optimizing a Kubernetes cluster. You will read the CSV input which is time series data from Azure Monitor and provide recommendations for optimizing the Kubernetes cluster. You will read in the file_id provided and use your code interpreter to read the CSV file and provide recommendations for optimizing the Kubernetes cluster. You will also generate a matplotlib graph of the data.
 
-          The format of the JSON will look like this:
-          {
-            "type": "object",
-            "properties": {
-                "status": {
-                    "type": "string"
-                },
-                "data": {
-                    "type": "object",
-                    "properties": {
-                        "resultType": {
-                            "type": "string"
-                        },
-                        "result": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "metric": {
-                                        "type": "object",
-                                        "properties": {
-                                            "cluster": {
-                                                "type": "string"
-                                            },
-                                            "container": {
-                                                "type": "string"
-                                            },
-                                            "cpu": {
-                                                "type": "string"
-                                            },
-                                            "id": {
-                                                "type": "string"
-                                            },
-                                            "image": {
-                                                "type": "string"
-                                            },
-                                            "instance": {
-                                                "type": "string"
-                                            },
-                                            "job": {
-                                                "type": "string"
-                                            },
-                                            "name": {
-                                                "type": "string"
-                                            },
-                                            "namespace": {
-                                                "type": "string"
-                                            },
-                                            "pod": {
-                                                "type": "string"
-                                            }
-                                        }
-                                    },
-                                    "values": {
-                                        "type": "array",
-                                        "items": {
-                                            "type": "array"
-                                        }
-                                    }
-                                },
-                                "required": [
-                                    "metric",
-                                    "values"
-                                ]
-                            }
-                        }
-                    }
-                }
-            }
-        }
+          The CSV file will contain the following columns:
+          - cluster
+          - container
+          - cpu
+          - id
+          - image
+          - instance
+          - job
+          - name
+          - namespace
+          - pod
+          - timestamp
+          - value
         """,
         tools=code_interpreter.definitions,
         tool_resources=code_interpreter.resources
