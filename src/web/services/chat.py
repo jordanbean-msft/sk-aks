@@ -4,7 +4,6 @@ import requests
 from msal import PublicClientApplication
 from yaml import load, Loader
 
-from models.chat_create_thread_input import ChatCreateThreadInput
 from models.chat_input import ChatInput
 from models.chat_get_thread import ChatGetThreadInput
 from models.chat_get_image import ChatGetImageInput

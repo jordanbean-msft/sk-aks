@@ -22,12 +22,6 @@ with open('assets/css/style.css', encoding='utf-8') as f:
 st.image("assets/images/aks.svg", width=192)
 st.title("AKS AI Assistant")
 
-def show_image():
-    st.session_state.messages.add_user_message("Visualize")
-    with st.spinner("Visualizing..."):
-        image = get_image(file_id="assistant-WL7g3MbtFFumTcosw7uKhw")
-        st.image(image)
-
 # Initialize session state
 if "messages" not in st.session_state:
     st.session_state.messages = ChatHistory()
