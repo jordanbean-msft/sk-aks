@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 
 from semantic_kernel import Kernel
 #from semantic_kernel.agents.open_ai import AzureAssistantAgent
@@ -17,31 +18,13 @@ from app.models.chat_output import ChatOutput
 
 logger = logging.getLogger("uvicorn.error")
 
-async def create_kubernetes_agent(client, ai_agent_settings, kernel) -> AzureAIAgent:
-    code_interpreter = CodeInterpreterTool()
-
+async def create_azure_monitor_agent(client, ai_agent_settings, kernel) -> AzureAIAgent:
     agent_definition = await client.agents.create_agent(
         model=ai_agent_settings.model_deployment_name,
-        name="kubernetes-agent",
-        instructions="""
-          You are a helpful assistant that can interpret and make recommendations for optimizing a Kubernetes cluster. You will read the CSV input which is time series data from Azure Monitor and provide recommendations for optimizing the Kubernetes cluster. You will read in the file_id provided and use your code interpreter to read the CSV file and provide recommendations for optimizing the Kubernetes cluster. You will also generate a matplotlib graph of the data.
-
-          The CSV file will contain the following columns:
-          - cluster
-          - container
-          - cpu
-          - id
-          - image
-          - instance
-          - job
-          - name
-          - namespace
-          - pod
-          - timestamp
-          - value
-        """,
-        tools=code_interpreter.definitions,
-        tool_resources=code_interpreter.resources
+        name="azure-monitor-agent",
+        instructions=f"""
+          You are a helpful assistant that can query Azure Monitor for Kubernetes Prometheus monitoring logs. The current datetime is {datetime.now().isoformat()}. If you are unable to retrieve any data for the specified datatype & time, do not make it up. Return a message indicating that no data was found. You will not recieve data directly in this chat, but the results will be written to a CSV file. You will receive a file_id if successful.
+        """
     )
 
     agent = AzureAIAgent(
@@ -52,4 +35,4 @@ async def create_kubernetes_agent(client, ai_agent_settings, kernel) -> AzureAIA
 
     return agent
 
-__all__ = ["create_kubernetes_agent"]
+__all__ = ["create_azure_monitor_agent"]

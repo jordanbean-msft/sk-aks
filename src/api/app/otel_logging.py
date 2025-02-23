@@ -1,11 +1,13 @@
 import asyncio
 import logging
-from typing import Annotated
+
+from azure.monitor.opentelemetry.exporter import (
+    AzureMonitorLogExporter,
+    AzureMonitorMetricExporter,
+    AzureMonitorTraceExporter,
+)
 
 from opentelemetry._logs import set_logger_provider
-from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
-from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.metrics import set_meter_provider
 from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
@@ -17,23 +19,26 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.trace import set_tracer_provider
+from azure.core.settings import settings
+from azure.core.tracing.ext.opentelemetry_span import OpenTelemetrySpan
 
-from semantic_kernel import Kernel
-from semantic_kernel.connectors.ai.function_choice_behavior import FunctionChoiceBehavior
-from semantic_kernel.connectors.ai.open_ai import AzureChatCompletion
-from semantic_kernel.connectors.ai.prompt_execution_settings import PromptExecutionSettings
-from semantic_kernel.functions.kernel_arguments import KernelArguments
-from semantic_kernel.functions.kernel_function_decorator import kernel_function
+from app.config.config import get_settings
 
-# Endpoint to the Aspire Dashboard
-endpoint = "http://localhost:4317"
+def setup_logging():
+    # Replace the connection string with your Application Insights connection string
+    connection_string = get_settings().application_insights_connection_string
 
-# Create a resource to represent the service/sample
-resource = Resource.create({ResourceAttributes.SERVICE_NAME: "sk-aks-api"})
+    settings.tracing_implementation = OpenTelemetrySpan
 
+    # Create a resource to represent the service/sample
+    resource = Resource.create({ResourceAttributes.SERVICE_NAME: "sk-aks"})
 
-def set_up_logging():
-    exporter = OTLPLogExporter(endpoint=endpoint)
+    set_up_logging(connection_string=connection_string, resource=resource)
+    set_up_tracing(connection_string=connection_string, resource=resource)
+    set_up_metrics(connection_string=connection_string, resource=resource)
+
+def set_up_logging(connection_string, resource):
+    exporter = AzureMonitorLogExporter(connection_string=connection_string)
 
     # Create and set a global logger provider for the application.
     logger_provider = LoggerProvider(resource=resource)
@@ -54,8 +59,8 @@ def set_up_logging():
     logger.setLevel(logging.INFO)
 
 
-def set_up_tracing():
-    exporter = OTLPSpanExporter(endpoint=endpoint)
+def set_up_tracing(connection_string, resource):
+    exporter = AzureMonitorTraceExporter(connection_string=connection_string)
 
     # Initialize a trace provider for the application. This is a factory for creating tracers.
     tracer_provider = TracerProvider(resource=resource)
@@ -66,8 +71,8 @@ def set_up_tracing():
     set_tracer_provider(tracer_provider)
 
 
-def set_up_metrics():
-    exporter = OTLPMetricExporter(endpoint=endpoint)
+def set_up_metrics(connection_string, resource):
+    exporter = AzureMonitorMetricExporter(connection_string=connection_string)
 
     # Initialize a metric provider for the application. This is a factory for creating meters.
     meter_provider = MeterProvider(
@@ -82,8 +87,4 @@ def set_up_metrics():
     # Sets the global default meter provider
     set_meter_provider(meter_provider)
 
-
-# This must be done before any other telemetry calls
-set_up_logging()
-set_up_tracing()
-set_up_metrics()
+__all__ = ["setup_logging"]

@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+        - name: api
+          image: {{.Env.SERVICE_WEB_IMAGE_NAME}}
+          ports:
+            - containerPort: 8501
+          env:
+            - name: services__api__api__0
+              valueFrom:
+                configMapKeyRef:
+                  name: web-config
+                  key: services__api__api__0
+                  optional: false

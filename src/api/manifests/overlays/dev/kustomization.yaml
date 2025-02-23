@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namePrefix: dev-
+resources:
+- ../../base
+configMapGenerator:
+- envs:
+  - ../../../.env
+  name: api-config
+images:
+- name: mcr.microsoft.com/mcr/hello-world
+  newName: crskakseus2dev.azurecr.io/sk-aks/api
+  newTag: v3

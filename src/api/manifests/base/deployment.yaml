@@ -1,0 +1,102 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      containers:
+        - name: api
+          image: mcr.microsoft.com/mcr/hello-world
+          ports:
+            - containerPort: 80
+          env:            
+            - name: AZURE_OPENAI_API_KEY
+              valueFrom:
+                configMapKeyRef:
+                  name: api-config
+                  key: AZURE_OPENAI_API_KEY
+                  optional: false
+            - name: AZURE_OPENAI_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: api-config
+                  key: AZURE_OPENAI_ENDPOINT
+                  optional: false
+            - name: AZURE_OPENAI_CHAT_DEPLOYMENT_NAME 
+              valueFrom:
+                configMapKeyRef:
+                  name: api-config
+                  key: AZURE_OPENAI_CHAT_DEPLOYMENT_NAME
+                  optional: false
+            - name: AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: api-config
+                  key: AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME
+                  optional: false
+            - name: AZURE_OPENAI_API_VERSION
+              valueFrom:
+                configMapKeyRef:
+                  name: api-config
+                  key: AZURE_OPENAI_API_VERSION
+                  optional: false
+            - name: APPLICATION_INSIGHTS_CONNECTION_STRING
+              valueFrom:
+                configMapKeyRef:
+                  name: api-config
+                  key: APPLICATION_INSIGHTS_CONNECTION_STRING
+                  optional: false
+            - name: CLIENT_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: api-config
+                  key: CLIENT_ID
+                  optional: false
+            - name: CLIENT_SECRET
+              valueFrom:
+                configMapKeyRef:
+                  name: api-config
+                  key: CLIENT_SECRET
+                  optional: false
+            - name: TENANT_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: api-config
+                  key: TENANT_ID
+                  optional: false
+            - name: AZURE_MONITOR_QUERY_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: api-config
+                  key: AZURE_MONITOR_QUERY_ENDPOINT
+                  optional: false
+          livenessProbe:
+            httpGet:
+              path: /v1/liveness
+              port: 80
+            initialDelaySeconds: 5
+            failureThreshold: 1
+            periodSeconds: 10
+
+          startupProbe:
+            httpGet:
+              path: /v1/startup
+              port: 80
+            failureThreshold: 30
+            periodSeconds: 10
+
+          readinessProbe:
+            httpGet:
+              path: /v1/readiness
+              port: 80
+            initialDelaySeconds: 5
+            failureThreshold: 1
+            periodSeconds: 10
