@@ -1,0 +1,4 @@
+aks-sk-aks-eus2-dev
+[end]
+list cpu utilization for azure-store namespace for the past 30 days
+[end]

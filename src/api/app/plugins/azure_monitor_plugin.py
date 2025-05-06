@@ -8,7 +8,7 @@ from opentelemetry import trace
 from msal import ConfidentialClientApplication
 
 from semantic_kernel.functions.kernel_function_decorator import kernel_function
-from semantic_kernel.agents.azure_ai import AzureAIAgent, AzureAIAgentSettings
+from semantic_kernel.agents import AzureAIAgent, AzureAIAgentSettings
 from azure.ai.projects.models import CodeInterpreterTool
 from azure.identity.aio import DefaultAzureCredential
 
@@ -86,7 +86,7 @@ class AzureMonitorPlugin:
         result = requests.request(
             method="GET",
             url=urllib.parse.urljoin(get_settings().azure_monitor_query_endpoint, "/api/v1/query_range"),
-            params="query=rate(container_cpu_usage_seconds_total{namespace=\"pets\"}[30d])&start=1737651686&end=1740243686&step=1d",
+            params="query=rate(container_cpu_usage_seconds_total{namespace=\"azure-store\"}[30d])&start=1746410700&end=1746497100&step=1d",
             timeout=10,
             headers={
                 "Authorization": f"Bearer {access_token}"
@@ -181,14 +181,14 @@ class AzureMonitorPlugin:
                 purpose="assistants"
             )
 
-            kubernetes_agent = await client.agents.get_agent(assistant_id=self.kubernetes_agent_id)
+            kubernetes_agent = await client.agents.get_agent(agent_id=self.kubernetes_agent_id)
 
             code_interpreter = CodeInterpreterTool(
                 file_ids=[file_upload.id]
             )
 
             await client.agents.update_agent(
-                assistant_id=kubernetes_agent.id,
+                agent_id=kubernetes_agent.id,
                 tools=code_interpreter.definitions,
                 tool_resources=code_interpreter.resources
             )

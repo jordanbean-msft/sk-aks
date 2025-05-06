@@ -6,4 +6,13 @@ class ChatOutput(KernelBaseModel):
     content: str
     thread_id: str
 
-__all__ = ["ChatOutput"]
+def serialize_chat_output(chat_output):
+    if isinstance(chat_output, ChatOutput):
+        return {
+            "content_type": chat_output.content_type.value,
+            "content": chat_output.content,
+            "thread_id": chat_output.thread_id,
+        }
+    raise TypeError
+
+__all__ = ["ChatOutput", "serialize_chat_output"]

@@ -19,25 +19,18 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.trace import set_tracer_provider
-from azure.core.settings import settings
-from azure.core.tracing.ext.opentelemetry_span import OpenTelemetrySpan
 
-from app.config.config import get_settings
 
-def setup_logging():
-    # Replace the connection string with your Application Insights connection string
-    connection_string = get_settings().application_insights_connection_string
+from app.config import get_settings
 
-    settings.tracing_implementation = OpenTelemetrySpan
+# Replace the connection string with your Application Insights connection string
+connection_string = get_settings().application_insights_connection_string
 
-    # Create a resource to represent the service/sample
-    resource = Resource.create({ResourceAttributes.SERVICE_NAME: "sk-aks"})
+# Create a resource to represent the service/sample
+resource = Resource.create({ResourceAttributes.SERVICE_NAME: "sk-aks"})
 
-    set_up_logging(connection_string=connection_string, resource=resource)
-    set_up_tracing(connection_string=connection_string, resource=resource)
-    set_up_metrics(connection_string=connection_string, resource=resource)
 
-def set_up_logging(connection_string, resource):
+def set_up_logging():
     exporter = AzureMonitorLogExporter(connection_string=connection_string)
 
     # Create and set a global logger provider for the application.
@@ -59,7 +52,7 @@ def set_up_logging(connection_string, resource):
     logger.setLevel(logging.INFO)
 
 
-def set_up_tracing(connection_string, resource):
+def set_up_tracing():
     exporter = AzureMonitorTraceExporter(connection_string=connection_string)
 
     # Initialize a trace provider for the application. This is a factory for creating tracers.
@@ -71,7 +64,7 @@ def set_up_tracing(connection_string, resource):
     set_tracer_provider(tracer_provider)
 
 
-def set_up_metrics(connection_string, resource):
+def set_up_metrics():
     exporter = AzureMonitorMetricExporter(connection_string=connection_string)
 
     # Initialize a metric provider for the application. This is a factory for creating meters.
@@ -87,4 +80,7 @@ def set_up_metrics(connection_string, resource):
     # Sets the global default meter provider
     set_meter_provider(meter_provider)
 
-__all__ = ["setup_logging"]
+
+# This must be done before any other telemetry calls
+
+__all__ = ["set_up_logging", "set_up_tracing", "set_up_metrics"]
