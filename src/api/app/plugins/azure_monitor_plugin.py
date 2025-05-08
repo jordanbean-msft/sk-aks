@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 import urllib
 import json
@@ -24,9 +25,9 @@ class AzureMonitorPlugin:
         self.kubernetes_agent_id = kubernetes_agent_id
         self.thread_id = thread_id
 
-    @tracer.start_as_current_span(name="call_azure_monitor")
+    @tracer.start_as_current_span(name="call_azure_monitor_generic")
     #@kernel_function(description="Executes a HTTP REST API call to the Azure Monitor API, using the Prometheus query language (PromQL) for querying and aggregating metrics & time series data.")
-    async def call_azure_monitor(self,
+    async def call_azure_monitor_generic(self,
                                 method: Annotated[str, "The HTTP REST API method (GET, POST) to make"],
                                 url: Annotated[str, "The HTTP REST API URL to call. This should only be the Prometheus HTTP API path (using the v1 API specification)"],
                                 params: Annotated[str, "The HTTP REST API query parameters to append to the URL. Start and End parameters must be in RFC3339 format."],
@@ -79,7 +80,7 @@ class AzureMonitorPlugin:
             return f"Failed to execute Azure Monitor REST API call: {result.request.method}: {result.url} - {result.json()}"
         
     @tracer.start_as_current_span(name="call_azure_monitor_hard_coded")
-    @kernel_function(description="Executes a HTTP REST API call to the Azure Monitor API, using the Prometheus query language (PromQL) for querying and aggregating metrics & time series data.")
+    #@kernel_function(description="Executes a HTTP REST API call to the Azure Monitor API, using the Prometheus query language (PromQL) for querying and aggregating metrics & time series data.")
     async def call_azure_monitor_hard_coded(self) -> Annotated[str, "The result of the HTTP REST API call"]:
         access_token = self.get_azure_monitor_access_token()
 
@@ -111,23 +112,68 @@ class AzureMonitorPlugin:
 
             return f"Failed to execute Azure Monitor REST API call: {result.request.method}: {result.url} - {result.json()}"
 
-    def get_azure_monitor_access_token(self):
-        settings = get_settings()
+    # @tracer.start_as_current_span(name="get_current_time")
+    # @kernel_function(description="Returns the current time in Unix timestamp format.")
+    # async def get_current_time(self) -> Annotated[int, "The current time in Unix timestamp format"]:
+    #     logger.debug(f"Getting current time {datetime.now().timestamp()}")
+    #     return int(datetime.now().timestamp())
 
-        app = ConfidentialClientApplication(
-            client_id=settings.client_id,
-            client_credential=settings.client_secret,
-            authority=f"https://login.microsoftonline.com/{settings.tenant_id}"
+    @tracer.start_as_current_span(name="call_azure_monitor")
+    @kernel_function(description="Executes call to the Azure Monitor API, using the Prometheus query language (PromQL) for querying and aggregating metrics & time series data. This will return the container cpu usage seconds total.")
+    async def call_azure_monitor(self,
+            namespace: Annotated[str, "The Kubernetes namespace to filter on"],
+            number_of_days: Annotated[str, "The time range to query for. Should include the time unit (e.g. 30d, 1h)"],
+            start: Annotated[int, "The Unix timestamp of the start of the range. Make sure and determine this time based upon the current time. Make sure this start time is not more than 32 days before the end time"],
+            end: Annotated[int, "The Unix timestamp of the end of the range. Make sure and determine this time based upon the current time. Make sure this end time is not more than 32 days later than the start time"],
+            step: Annotated[str, "The resolution of the data to return"]) -> Annotated[str, "The number of container cpu usage seconds total"]:
+        access_token = self.get_azure_monitor_access_token()
+
+        result = requests.request(
+            method="GET",
+            url=urllib.parse.urljoin(get_settings().azure_monitor_query_endpoint, "/api/v1/query_range"),
+            params=f'query=rate(container_cpu_usage_seconds_total{{namespace="{namespace}"}}[{number_of_days}])&start={start}&end={end}&step={step}',
+            timeout=10,
+            headers={
+            "Authorization": f"Bearer {access_token}"
+            }
         )
 
-        result = app.acquire_token_for_client(
-            scopes=["https://prometheus.monitor.azure.com/.default"])
+        if result.ok:
+            logger.debug(
+                f"Successfully executed Azure Monitor REST API call: {result.request.method}: {result.url}")
+            logger.debug(f"Body: {result.json()}")
 
-        if "access_token" not in result:
-            raise ValueError(
-                f"Fail to acquire token by device flow. Err: {json.dumps(result, indent=4)}")
+            try:
+                file_upload_id = await self.process_result(result)
+                return file_upload_id
+            except Exception as e:
+                logger.error(f"Error processing chat: {e}")
+                return f"Error processing chat: {e}"
+        else:
+            logger.error(
+                f"Failed to execute Azure Monitor REST API call: {result.request.method}: {result.url}")
+            logger.error(f"Body: {result.json()}")
 
-        return result['access_token']
+            return f"Failed to execute Azure Monitor REST API call: {result.request.method}: {result.url} - {result.json()}"
+
+
+    def get_azure_monitor_access_token(self):
+            settings = get_settings()
+
+            app = ConfidentialClientApplication(
+                client_id=settings.client_id,
+                client_credential=settings.client_secret,
+                authority=f"https://login.microsoftonline.com/{settings.tenant_id}"
+            )
+
+            result = app.acquire_token_for_client(
+                scopes=["https://prometheus.monitor.azure.com/.default"])
+
+            if "access_token" not in result:
+                raise ValueError(
+                    f"Fail to acquire token by device flow. Err: {json.dumps(result, indent=4)}")
+
+            return result['access_token']
 
     async def process_result(self, result):
         ai_agent_settings = AzureAIAgentSettings(

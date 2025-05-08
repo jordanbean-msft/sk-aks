@@ -18,12 +18,12 @@ from app.models.chat_output import ChatOutput
 
 logger = logging.getLogger("uvicorn.error")
 
-async def create_azure_monitor_agent(client, kernel) -> AzureAIAgent:
+async def create_azure_monitor_agent(client, kernel, name) -> AzureAIAgent:
     agent_definition = await client.agents.create_agent(
         model=get_settings().azure_openai_model_deployment_name,
-        name="azure-monitor-agent",
+        name=name,
         instructions=f"""
-          You are a helpful assistant that can query Azure Monitor for Kubernetes Prometheus monitoring logs. The current datetime is {datetime.now().isoformat()}. If you are unable to retrieve any data for the specified datatype & time, do not make it up. Return a message indicating that no data was found. You will not recieve data directly in this chat, but the results will be written to a CSV file. You will receive a file_id if successful.
+          You are a helpful assistant that can query Azure Monitor for Kubernetes Prometheus monitoring logs. The current datetime is {datetime.now().isoformat()}, make sure you reference this datetime when calling functions. If you are unable to retrieve any data for the specified datatype & time, do not make it up. Return a message indicating that no data was found. Make sure you call your provided functions to retrieve the Azure Monitor data based upon the user's query.
         """
     )
 

@@ -17,12 +17,12 @@ from app.models.chat_output import ChatOutput
 
 logger = logging.getLogger("uvicorn.error")
 
-async def create_kubernetes_agent(client, kernel) -> AzureAIAgent:
+async def create_kubernetes_agent(client, kernel, name) -> AzureAIAgent:
     code_interpreter = CodeInterpreterTool()
 
     agent_definition = await client.agents.create_agent(
         model=get_settings().azure_openai_model_deployment_name,
-        name="kubernetes-agent",
+        name=name,
         instructions="""
           You are a helpful assistant that can interpret and make recommendations for optimizing a Kubernetes cluster. You will read the CSV input which is time series data from Azure Monitor and provide recommendations for optimizing the Kubernetes cluster. You will read in the file_id provided and use your code interpreter to read the CSV file and provide recommendations for optimizing the Kubernetes cluster. You will also generate a matplotlib graph of the data.
 
