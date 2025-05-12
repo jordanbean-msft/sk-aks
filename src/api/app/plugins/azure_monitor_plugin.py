@@ -119,7 +119,7 @@ class AzureMonitorPlugin:
     #     return int(datetime.now().timestamp())
 
     @tracer.start_as_current_span(name="call_azure_monitor")
-    @kernel_function(description="Executes call to the Azure Monitor API, using the Prometheus query language (PromQL) for querying and aggregating metrics & time series data. This will return the container cpu usage seconds total.")
+    @kernel_function(description="Executes call to the Azure Monitor API, using the Prometheus query language (PromQL) for querying and aggregating metrics & time series data for a Azure Kubernetes Cluster. This will return the container cpu usage seconds total.")
     async def call_azure_monitor(self,
             namespace: Annotated[str, "The Kubernetes namespace to filter on"],
             number_of_days: Annotated[str, "The time range to query for. Should include the time unit (e.g. 30d, 1h)"],

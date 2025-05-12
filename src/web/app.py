@@ -85,7 +85,7 @@ def response(question):
     with st.chat_message(AuthorRole.ASSISTANT):
         with st.spinner("Reticulating splines..."):
             response = chat(thread_id=st.session_state.thread_id,
-                            aks_cluster_name=st.session_state.aks_cluster_name,
+                            aks_cluster_name="",
                             content=question)
 
             with st.empty():
@@ -121,13 +121,7 @@ def audio_chat():
 
         response(question_text)
 
-if "aks_cluster_name" not in st.session_state:
-    if aks_cluster_name := st.chat_input("Enter the name of your AKS cluster to get started."):
-        st.session_state.aks_cluster_name = aks_cluster_name
-        st.session_state.messages.add_user_message(f"AKS cluster name: {aks_cluster_name}")
-        st.rerun()
-
-if "aks_cluster_name" in st.session_state and "thread_id" in st.session_state:
+if "thread_id" in st.session_state:
     with st.sidebar:
         st.subheader(body="Thread ID", divider=True)
         st.write(st.session_state.thread_id)

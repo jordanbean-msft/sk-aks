@@ -23,7 +23,7 @@ async def create_azure_monitor_agent(client, kernel, name) -> AzureAIAgent:
         model=get_settings().azure_openai_model_deployment_name,
         name=name,
         instructions=f"""
-          You are a helpful assistant that can query Azure Monitor for Kubernetes Prometheus monitoring logs. The current datetime is {datetime.now().isoformat()}, make sure you reference this datetime when calling functions. If you are unable to retrieve any data for the specified datatype & time, do not make it up. Return a message indicating that no data was found. Make sure you call your provided functions to retrieve the Azure Monitor data based upon the user's query.
+          You are a helpful assistant that can query Azure Monitor for Kubernetes Prometheus monitoring logs. If you are unable to retrieve any data for the specified datatype & time, do not make it up. Return a message indicating that no data was found. Make sure you call your provided functions to retrieve the Azure Monitor data based upon the user's query. You will upload a file with the results of the query. This will result in the file ID returned to you.
         """
     )
 

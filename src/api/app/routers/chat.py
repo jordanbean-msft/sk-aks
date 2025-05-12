@@ -12,6 +12,7 @@ from semantic_kernel.functions.kernel_function_from_prompt import KernelFunction
 from azure.ai.projects.models import CodeInterpreterTool
 from azure.identity.aio import DefaultAzureCredential
 from semantic_kernel.core_plugins.time_plugin import TimePlugin
+from semantic_kernel.contents.chat_history import ChatHistory
 
 from semantic_kernel.contents.chat_message_content import ChatMessageContent
 from semantic_kernel.contents.utils.author_role import AuthorRole
@@ -36,6 +37,8 @@ from semantic_kernel.agents.strategies import (
 )
 from semantic_kernel.connectors.ai.open_ai import AzureChatCompletion
 from semantic_kernel.contents import ChatHistoryTruncationReducer
+from semantic_kernel.core_plugins.time_plugin import TimePlugin
+from semantic_kernel.core_plugins.math_plugin import MathPlugin
 
 from app.models.chat_input import ChatInput
 from app.models.chat_get_thread import ChatGetThreadInput
@@ -130,7 +133,7 @@ Choose only from these participants:
 
 Rules:
 - If RESPONSE is user input, it is {AZURE_MONITOR_AGENT_NAME}'s turn.
-- If RESPONSE is by {AZURE_MONITOR_AGENT_NAME} and the result was successful, it is {KUBERNETES_AGENT_NAME}'s turn. Otherwise, choose {AZURE_MONITOR_AGENT_NAME} again.
+- If RESPONSE is by {AZURE_MONITOR_AGENT_NAME} and the result is a file ID, it is {KUBERNETES_AGENT_NAME} turn. Otherwise, choose {AZURE_MONITOR_AGENT_NAME} again.
 
 RESPONSE:
 {{{{$lastmessage}}}}
@@ -187,12 +190,29 @@ async def build_chat_results(chat_input: ChatInput, azure_ai_client: AzureAIClie
                     kubernetes_agent_id=kubernetes_agent.id,
                     thread_id=chat_input.thread_id
                 ),
-                plugin_name="azure_monitor"
             )
 
-            #azure_monitor_agent_kernel.add_plugin(TimePlugin(), plugin_name="time")
+            azure_monitor_agent_kernel.add_plugin(TimePlugin(), plugin_name="time")
+            azure_monitor_agent_kernel.add_plugin(MathPlugin(), plugin_name="math")
 
             thread = await get_agent_thread(chat_input, azure_ai_client)
+
+            chat_history = ChatHistory()
+
+            async for message in thread.get_messages():
+                chat_history.add_message(
+                    ChatMessageContent(
+                        content=message.content,
+                        role=AuthorRole(message.role),
+                    )
+                )
+
+            chat_history.add_message(
+                ChatMessageContent(
+                    content=chat_input.content,
+                    role=AuthorRole.USER,
+                )
+            )
 
             # Create the AgentGroupChat with selection and termination strategies.
             chat = AgentGroupChat(
@@ -214,51 +234,18 @@ async def build_chat_results(chat_input: ChatInput, azure_ai_client: AzureAIClie
                     maximum_iterations=10,
                     history_reducer=history_reducer,
                 ),
-            )
-
-            await chat.add_chat_message(
-                ChatMessageContent(
-                    content=chat_input.content,
-                    role=AuthorRole.USER,
-                )
+                chat_history=chat_history
             )
 
             try:
-                async for response in chat.invoke_stream():
+                async for response in chat.invoke_stream(
+                ):
                     if response is None or not response.name:
                         continue
                     yield generate_chat_output(response)
             except Exception as e:
                 logger.error(f"Error during chat invocation: {e}")
-                yield json.dumps(
-                    obj=ChatOutput(
-                        content_type=ContentTypeEnum.MARKDOWN,
-                        content=f"Error during chat invocation: {e}",
-                        thread_id=chat_input.thread_id,
-                    ),
-                    default=serialize_chat_output,
-                )
-
-            # async for response in azure_monitor_agent.invoke_stream(
-            #     thread=thread,
-            #     messages=chat_input.content
-            # ):
-            #     yield generate_chat_output(response)
-
-            # yield json.dumps(
-            #     obj=ChatOutput(
-            #         content_type=ContentTypeEnum.MARKDOWN,
-            #         content="\n",
-            #         thread_id=chat_input.thread_id,
-            #     ),
-            #     default=serialize_chat_output,
-            # )
-
-            # async for response in kubernetes_agent.invoke_stream(
-            #     thread=thread,
-            #     messages=chat_input.content
-            # ):
-            #     yield generate_chat_output(response)
+                yield generate_text_output(f"Error during chat invocation: {e}")
 
             await azure_ai_client.agents.delete_agent(agent_id=azure_monitor_agent.id)
             await azure_ai_client.agents.delete_agent(agent_id=kubernetes_agent.id)
@@ -269,6 +256,16 @@ async def build_chat_results(chat_input: ChatInput, azure_ai_client: AzureAIClie
                 await azure_ai_client.agents.delete_agent(agent_id=azure_monitor_agent.id)
             if kubernetes_agent:
                 await azure_ai_client.agents.delete_agent(agent_id=kubernetes_agent.id)
+
+def generate_text_output(response):
+    return json.dumps(
+                obj=ChatOutput(
+                    content_type=ContentTypeEnum.MARKDOWN,
+                    content=response,
+                    thread_id=""#str(response.thread.id),
+                ),
+                default=serialize_chat_output,                    
+            )
 
 def generate_chat_output(response):
     for item in response.items:
