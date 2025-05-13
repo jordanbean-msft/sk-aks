@@ -1,4 +1,7 @@
+import asyncio
 from functools import lru_cache
+
+from openai import AsyncAzureOpenAI
 from app.config import get_settings
 from azure.identity.aio import DefaultAzureCredential
 from semantic_kernel.agents import AzureAIAgent, AzureAIAgentSettings
@@ -22,10 +25,22 @@ def create_azure_ai_client():
 
     return client
 
+async def create_async_azure_ai_client():
+    project_client = AIProjectClient.from_connection_string(conn_str=get_settings().azure_ai_agent_project_connection_string, credential=DefaultAzureCredential())
+
+    async_azure_ai_client = await project_client.inference.get_azure_openai_client()
+
+    return async_azure_ai_client
+
 @lru_cache
 def get_create_azure_ai_client():
     return create_azure_ai_client()
 
-AzureAIClient = Annotated[AIProjectClient, Depends(get_create_azure_ai_client)]
+@lru_cache
+async def get_create_async_azure_ai_client():
+    return await create_async_azure_ai_client()
 
-__all__ = ["AzureAIClient"]
+AzureAIClient = Annotated[AIProjectClient, Depends(get_create_azure_ai_client)]
+AsyncAzureAIClient = Annotated[AsyncAzureOpenAI, Depends(get_create_async_azure_ai_client)]
+
+__all__ = ["AzureAIClient", "AsyncAzureAIClient"]

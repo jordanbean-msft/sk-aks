@@ -5,6 +5,8 @@ from fastapi import APIRouter
 from fastapi.responses import Response, StreamingResponse
 from opentelemetry import trace
 
+from openai import AsyncAzureOpenAI
+
 from semantic_kernel import Kernel
 from semantic_kernel.contents.chat_message_content import ChatMessageContent
 from semantic_kernel.agents import AgentGroupChat, AzureAIAgentThread, AzureAIAgent, AzureAIAgentSettings
@@ -39,6 +41,7 @@ from semantic_kernel.connectors.ai.open_ai import AzureChatCompletion
 from semantic_kernel.contents import ChatHistoryTruncationReducer
 from semantic_kernel.core_plugins.time_plugin import TimePlugin
 from semantic_kernel.core_plugins.math_plugin import MathPlugin
+from azure.ai.projects.aio import AIProjectClient
 
 from app.models.chat_input import ChatInput
 from app.models.chat_get_thread import ChatGetThreadInput
@@ -51,7 +54,7 @@ from app.models.chat_output import ChatOutput, serialize_chat_output
 from app.models.chat_get_image import ChatGetImageInput
 from app.models.chat_get_image_contents import ChatGetImageContents
 from app.models.chat_create_thread_output import ChatCreateThreadOutput
-from app.routers.dependencies import AzureAIClient
+from app.routers.dependencies import AsyncAzureAIClient, AzureAIClient
 
 logger = logging.getLogger("uvicorn.error")
 tracer = trace.get_tracer(__name__)
@@ -125,7 +128,6 @@ SELECTION_FUNCTION = KernelFunctionFromPrompt(
         prompt=f"""
 Examine the provided RESPONSE and choose the next participant.
 State only the name of the chosen participant without explanation.
-Never choose the participant named in the RESPONSE.
 
 Choose only from these participants:
 - {KUBERNETES_AGENT_NAME}
@@ -133,7 +135,7 @@ Choose only from these participants:
 
 Rules:
 - If RESPONSE is user input, it is {AZURE_MONITOR_AGENT_NAME}'s turn.
-- If RESPONSE is by {AZURE_MONITOR_AGENT_NAME} and the result is a file ID, it is {KUBERNETES_AGENT_NAME} turn. Otherwise, choose {AZURE_MONITOR_AGENT_NAME} again.
+- If RESPONSE is by {AZURE_MONITOR_AGENT_NAME} and the result includes a file ID (in the format of 'assistant-Z6BLrvg6p37LcqL05uyRqp'), it is {KUBERNETES_AGENT_NAME} turn. Otherwise, choose {AZURE_MONITOR_AGENT_NAME} again.
 
 RESPONSE:
 {{{{$lastmessage}}}}
@@ -156,7 +158,23 @@ RESPONSE:
 """,
     )
 
-history_reducer = ChatHistoryTruncationReducer(target_count=5)
+history_reducer = ChatHistoryTruncationReducer(target_count=1)
+
+async def create_async_azure_ai_client():
+    project_client = AIProjectClient.from_connection_string(conn_str=get_settings().azure_ai_agent_project_connection_string, credential=DefaultAzureCredential())
+
+    async_azure_ai_client = await project_client.inference.get_azure_openai_client(api_version=get_settings().azure_openai_api_version)
+
+    return async_azure_ai_client
+
+def _create_kernel_with_chat_completion(service_id: str, client) -> Kernel:
+    kernel = Kernel()
+    kernel.add_service(AzureChatCompletion(service_id=service_id,
+                                           deployment_name=get_settings().azure_openai_model_deployment_name,
+                                           async_client=client
+                                           )
+    )
+    return kernel
 
 @tracer.start_as_current_span(name="chat")
 @router.post("/chat")
@@ -168,32 +186,30 @@ async def build_chat_results(chat_input: ChatInput, azure_ai_client: AzureAIClie
         azure_monitor_agent = None
         kubernetes_agent = None
         try:        
-            kubernetes_agent_kernel = Kernel()
+            async_azure_ai_client = await create_async_azure_ai_client()
+            kernel = _create_kernel_with_chat_completion("", async_azure_ai_client)
 
             kubernetes_agent = await create_kubernetes_agent(
                 client=azure_ai_client,
-                kernel=kubernetes_agent_kernel,
+                kernel=kernel,
                 name=KUBERNETES_AGENT_NAME
             )
 
-            azure_monitor_agent_kernel = Kernel()
+            azure_monitor_plugin=AzureMonitorPlugin(
+                aks_cluster_name=chat_input.aks_cluster_name,
+                kubernetes_agent_id=kubernetes_agent.id,
+                thread_id=chat_input.thread_id
+            )
+
+            time_plugin = TimePlugin()
+            math_plugin = MathPlugin()
 
             azure_monitor_agent = await create_azure_monitor_agent(
                 client=azure_ai_client,
-                kernel=azure_monitor_agent_kernel,
-                name=AZURE_MONITOR_AGENT_NAME
+                kernel=kernel, 
+                name=AZURE_MONITOR_AGENT_NAME,
+                plugins=[azure_monitor_plugin, time_plugin, math_plugin]
             )
-
-            azure_monitor_agent_kernel.add_plugin(
-                plugin=AzureMonitorPlugin(
-                    aks_cluster_name=chat_input.aks_cluster_name,
-                    kubernetes_agent_id=kubernetes_agent.id,
-                    thread_id=chat_input.thread_id
-                ),
-            )
-
-            azure_monitor_agent_kernel.add_plugin(TimePlugin(), plugin_name="time")
-            azure_monitor_agent_kernel.add_plugin(MathPlugin(), plugin_name="math")
 
             thread = await get_agent_thread(chat_input, azure_ai_client)
 
@@ -214,22 +230,23 @@ async def build_chat_results(chat_input: ChatInput, azure_ai_client: AzureAIClie
                 )
             )
 
+
             # Create the AgentGroupChat with selection and termination strategies.
             chat = AgentGroupChat(
                 agents=[kubernetes_agent, azure_monitor_agent],
                 selection_strategy=KernelFunctionSelectionStrategy(
                     initial_agent=azure_monitor_agent,
                     function=SELECTION_FUNCTION,
-                    kernel=azure_monitor_agent_kernel,
-                    result_parser=lambda result: str(result.value[0]).strip() if result.value[0] is not None else KUBERNETES_AGENT_NAME,
+                    kernel=_create_kernel_with_chat_completion("selection", async_azure_ai_client),
+                    result_parser=result_parser_selection,
                     history_variable_name="lastmessage",
                     history_reducer=history_reducer,
                 ),
                 termination_strategy=KernelFunctionTerminationStrategy(
                     agents=[kubernetes_agent],
                     function=TERMINATION_FUNCTION,
-                    kernel=kubernetes_agent_kernel,
-                    result_parser=lambda result: TERMINATION_KEYWORD in str(result.value[0]).lower(),
+                    kernel=_create_kernel_with_chat_completion("termination", async_azure_ai_client),
+                    result_parser=result_parser_termination,
                     history_variable_name="lastmessage",
                     maximum_iterations=10,
                     history_reducer=history_reducer,
@@ -247,15 +264,23 @@ async def build_chat_results(chat_input: ChatInput, azure_ai_client: AzureAIClie
                 logger.error(f"Error during chat invocation: {e}")
                 yield generate_text_output(f"Error during chat invocation: {e}")
 
-            await azure_ai_client.agents.delete_agent(agent_id=azure_monitor_agent.id)
+            #await azure_ai_client.agents.delete_agent(agent_id=azure_monitor_agent.id)
             await azure_ai_client.agents.delete_agent(agent_id=kubernetes_agent.id)
         except Exception as e:
             logger.error(f"Error processing chat: {e}")
 
-            if azure_monitor_agent:
-                await azure_ai_client.agents.delete_agent(agent_id=azure_monitor_agent.id)
+            #if azure_monitor_agent:
+            #    await azure_ai_client.agents.delete_agent(agent_id=azure_monitor_agent.id)
             if kubernetes_agent:
                 await azure_ai_client.agents.delete_agent(agent_id=kubernetes_agent.id)
+
+def result_parser_selection(result):
+    x = str(result.value[0]).strip() if result.value[0] is not None else KUBERNETES_AGENT_NAME
+    return x
+
+def result_parser_termination(result):
+    x = TERMINATION_KEYWORD in str(result.value[0]).lower()
+    return x
 
 def generate_text_output(response):
     return json.dumps(

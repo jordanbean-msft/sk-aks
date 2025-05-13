@@ -1,0 +1,18 @@
+services:
+    fastapi:
+        build:
+            context: ./src/api
+            dockerfile: Dockerfile
+        ports:
+            - "8000:8000"
+        env_file: ./src/api/.env
+    streamlit:
+        build:
+            context: ./src/web
+            dockerfile: Dockerfile
+        ports:
+            - "8501:8501" 
+        environment:
+            - services__api__api__0=http://fastapi:8000
+        depends_on:
+            - fastapi

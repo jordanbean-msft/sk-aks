@@ -118,6 +118,17 @@ class AzureMonitorPlugin:
     #     logger.debug(f"Getting current time {datetime.now().timestamp()}")
     #     return int(datetime.now().timestamp())
 
+    @tracer.start_as_current_span(name="convert_date_to_unix_timestamp")
+    @kernel_function(description="Converts a date string in RFC3339 format to a Unix timestamp.")
+    async def convert_date_to_unix_timestamp(self, date_string: Annotated[str, "The date string should be in the format 'Monday, January 02, 2006' with no hours, minutes or seconds"]) -> Annotated[int, "The Unix timestamp of the date string"]:
+        # Parse the date string into a datetime object
+        date_object = datetime.strptime(date_string, "%A, %B %d, %Y")
+
+        # Convert the datetime object to a Unix timestamp
+        unix_timestamp = int(date_object.timestamp())
+
+        return unix_timestamp
+
     @tracer.start_as_current_span(name="call_azure_monitor")
     @kernel_function(description="Executes call to the Azure Monitor API, using the Prometheus query language (PromQL) for querying and aggregating metrics & time series data for a Azure Kubernetes Cluster. This will return the container cpu usage seconds total.")
     async def call_azure_monitor(self,

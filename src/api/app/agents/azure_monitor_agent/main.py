@@ -18,19 +18,26 @@ from app.models.chat_output import ChatOutput
 
 logger = logging.getLogger("uvicorn.error")
 
-async def create_azure_monitor_agent(client, kernel, name) -> AzureAIAgent:
-    agent_definition = await client.agents.create_agent(
-        model=get_settings().azure_openai_model_deployment_name,
-        name=name,
-        instructions=f"""
-          You are a helpful assistant that can query Azure Monitor for Kubernetes Prometheus monitoring logs. If you are unable to retrieve any data for the specified datatype & time, do not make it up. Return a message indicating that no data was found. Make sure you call your provided functions to retrieve the Azure Monitor data based upon the user's query. You will upload a file with the results of the query. This will result in the file ID returned to you.
-        """
-    )
+#async def create_azure_monitor_agent(client, kernel, name, plugins) -> AzureAIAgent:
+async def create_azure_monitor_agent(client, kernel, name, plugins) -> ChatCompletionAgent:
+    # agent_definition = await client.agents.create_agent(
+    #     model=get_settings().azure_openai_model_deployment_name,
+    #     name=name,
+    #     instructions=f"""
+    #       You are a helpful assistant that can query Azure Monitor for Kubernetes Prometheus monitoring logs. If you are unable to retrieve any data for the specified datatype & time, do not make it up. Return a message indicating that no data was found. Make sure you call your provided functions to retrieve the Azure Monitor data based upon the user's query. You will upload a file with the results of the query. This will result in the file ID returned to you.
+    #     """
+    # )
 
-    agent = AzureAIAgent(
-        client=client,
-        definition=agent_definition,
+    #agent = AzureAIAgent(
+    agent = ChatCompletionAgent(
+        #client=client,
+        #definition=agent_definition.,
+        name=name,
+        instructions="""
+          You are a helpful assistant that can query Azure Monitor for Kubernetes Prometheus monitoring logs. If you are unable to retrieve any data for the specified datatype & time, do not make it up. Return a message indicating that no data was found. Make sure you call your provided functions to retrieve the Azure Monitor data based upon the user's query. You will upload a file with the results of the query. This will result in the file ID returned to you.
+        """,
         kernel=kernel,
+        plugins=plugins
     )
 
     return agent
