@@ -3,7 +3,7 @@ requests==2.32.3
 pyyaml==6.0.2
 msal==1.31.1
 pydantic==2.11.3
-semantic-kernel[azure,realtime]==1.28.1
+semantic-kernel[azure,realtime]==1.29.0
 pandas==2.2.3
 matplotlib==3.10.0
 websockets==15.0.1

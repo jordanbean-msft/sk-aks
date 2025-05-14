@@ -138,7 +138,7 @@ Rules:
 - If RESPONSE is by {AZURE_MONITOR_AGENT_NAME} and the result includes a file ID (in the format of 'assistant-Z6BLrvg6p37LcqL05uyRqp'), it is {KUBERNETES_AGENT_NAME} turn. Otherwise, choose {AZURE_MONITOR_AGENT_NAME} again.
 
 RESPONSE:
-{{{{$lastmessage}}}}
+{{{{$history}}}}
 """,
 )
 
@@ -154,11 +154,11 @@ If specific suggestions are being provided, it is not satisfactory.
 If no correction is suggested, it is satisfactory.
 
 RESPONSE:
-{{{{$lastmessage}}}}
+{{{{$history}}}}
 """,
     )
 
-history_reducer = ChatHistoryTruncationReducer(target_count=1)
+history_reducer = ChatHistoryTruncationReducer(target_count=10)
 
 async def create_async_azure_ai_client():
     project_client = AIProjectClient.from_connection_string(conn_str=get_settings().azure_ai_agent_project_connection_string, credential=DefaultAzureCredential())
@@ -170,6 +170,16 @@ async def create_async_azure_ai_client():
 def _create_kernel_with_chat_completion(service_id: str, client) -> Kernel:
     kernel = Kernel()
     kernel.add_service(AzureChatCompletion(service_id=service_id,
+                                           deployment_name=get_settings().azure_openai_model_deployment_name,
+                                           async_client=client
+                                           )
+    )
+    kernel.add_service(AzureChatCompletion(service_id="selection",
+                                           deployment_name=get_settings().azure_openai_model_deployment_name,
+                                           async_client=client
+                                           )
+    )
+    kernel.add_service(AzureChatCompletion(service_id="termination",
                                            deployment_name=get_settings().azure_openai_model_deployment_name,
                                            async_client=client
                                            )
@@ -230,44 +240,54 @@ async def build_chat_results(chat_input: ChatInput, azure_ai_client: AzureAIClie
                 )
             )
 
-
             # Create the AgentGroupChat with selection and termination strategies.
             chat = AgentGroupChat(
                 agents=[kubernetes_agent, azure_monitor_agent],
                 selection_strategy=KernelFunctionSelectionStrategy(
                     initial_agent=azure_monitor_agent,
                     function=SELECTION_FUNCTION,
-                    kernel=_create_kernel_with_chat_completion("selection", async_azure_ai_client),
+                    kernel=kernel,
                     result_parser=result_parser_selection,
-                    history_variable_name="lastmessage",
+                    history_variable_name="history",
                     history_reducer=history_reducer,
+                    agent_variable_name="agents"
                 ),
                 termination_strategy=KernelFunctionTerminationStrategy(
                     agents=[kubernetes_agent],
                     function=TERMINATION_FUNCTION,
-                    kernel=_create_kernel_with_chat_completion("termination", async_azure_ai_client),
+                    kernel=kernel,
                     result_parser=result_parser_termination,
-                    history_variable_name="lastmessage",
+                    history_variable_name="history",
                     maximum_iterations=10,
                     history_reducer=history_reducer,
                 ),
-                chat_history=chat_history
+                #chat_history=chat_history
             )
 
+            await chat.add_chat_message(
+                ChatMessageContent(
+                    content=chat_input.content,
+                    role=AuthorRole.USER,
+                )
+            )
+
+            message = ""
             try:
-                async for response in chat.invoke_stream(
-                ):
+                #async for response in chat.invoke():
+                async for response in chat.invoke_stream():
                     if response is None or not response.name:
                         continue
-                    yield generate_chat_output(response)
+                    msg = generate_chat_output(response)                    
+                    yield msg
             except Exception as e:
                 logger.error(f"Error during chat invocation: {e}")
                 yield generate_text_output(f"Error during chat invocation: {e}")
 
-            #await azure_ai_client.agents.delete_agent(agent_id=azure_monitor_agent.id)
+             
             await azure_ai_client.agents.delete_agent(agent_id=kubernetes_agent.id)
         except Exception as e:
             logger.error(f"Error processing chat: {e}")
+            yield generate_text_output(f"Error during chat invocation: {e}")
 
             #if azure_monitor_agent:
             #    await azure_ai_client.agents.delete_agent(agent_id=azure_monitor_agent.id)
@@ -298,7 +318,7 @@ def generate_chat_output(response):
             return json.dumps(
                 obj=ChatOutput(
                     content_type=ContentTypeEnum.MARKDOWN,
-                    content=response.content,
+                    content=item.text,
                     thread_id=""#str(response.thread.id),
                 ),
                 default=serialize_chat_output,                    

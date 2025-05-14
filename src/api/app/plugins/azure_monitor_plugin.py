@@ -156,7 +156,7 @@ class AzureMonitorPlugin:
 
             try:
                 file_upload_id = await self.process_result(result)
-                return file_upload_id
+                return f"Successfully queried Azure Monitor. Uploaded results as file ID: {file_upload_id}"
             except Exception as e:
                 logger.error(f"Error processing chat: {e}")
                 return f"Error processing chat: {e}"
@@ -233,7 +233,6 @@ class AzureMonitorPlugin:
 
             # Upload the file to the Azure AI agent
             file_upload = await client.agents.upload_file(
-                #file_path=file_path,
                 file_path=csv_file_path,
                 purpose="assistants"
             )

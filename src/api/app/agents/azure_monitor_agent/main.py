@@ -34,7 +34,7 @@ async def create_azure_monitor_agent(client, kernel, name, plugins) -> ChatCompl
         #definition=agent_definition.,
         name=name,
         instructions="""
-          You are a helpful assistant that can query Azure Monitor for Kubernetes Prometheus monitoring logs. If you are unable to retrieve any data for the specified datatype & time, do not make it up. Return a message indicating that no data was found. Make sure you call your provided functions to retrieve the Azure Monitor data based upon the user's query. You will upload a file with the results of the query. This will result in the file ID returned to you.
+          You are a helpful assistant that can query Azure Monitor for Kubernetes Prometheus monitoring logs. If you are unable to retrieve any data for the specified datatype & time, do not make it up. Return a message indicating that no data was found. Once you have successfully retrieved the data, reply back that you have retrieved the data and provide the file id.
         """,
         kernel=kernel,
         plugins=plugins
