@@ -9,7 +9,8 @@ from openai import AsyncAzureOpenAI
 
 from semantic_kernel import Kernel
 from semantic_kernel.contents.chat_message_content import ChatMessageContent
-from semantic_kernel.agents import AgentGroupChat, AzureAIAgentThread, AzureAIAgent, AzureAIAgentSettings
+from semantic_kernel.agents import AzureAIAgentThread, SequentialOrchestration #AgentGroupChat, AzureAIAgentThread, AzureAIAgent, AzureAIAgentSettings
+from semantic_kernel.agents.runtime import InProcessRuntime
 from semantic_kernel.functions.kernel_function_from_prompt import KernelFunctionFromPrompt
 from azure.ai.projects.models import CodeInterpreterTool
 from azure.identity.aio import DefaultAzureCredential
@@ -22,8 +23,7 @@ from semantic_kernel.contents import RealtimeAudioEvent, RealtimeTextEvent
 from semantic_kernel.contents.audio_content import AudioContent
 from azure.ai.projects.models import ThreadMessageOptions
 from semantic_kernel.connectors.ai.open_ai.services.azure_audio_to_text import AzureAudioToText
-from semantic_kernel.contents import StreamingFileReferenceContent
-from semantic_kernel.contents import StreamingTextContent
+from semantic_kernel.contents import StreamingFileReferenceContent, StreamingTextContent, FileReferenceContent, TextContent
 from semantic_kernel.connectors.ai.open_ai import (
     AzureRealtimeExecutionSettings,
     AzureRealtimeWebsocket,
@@ -190,6 +190,8 @@ def _create_kernel_with_chat_completion(service_id: str, client) -> Kernel:
 @router.post("/chat")
 async def post_chat(chat_input: ChatInput, azure_ai_client: AzureAIClient):
     return StreamingResponse(build_chat_results(chat_input, azure_ai_client))
+    #result = await build_chat_results(chat_input, azure_ai_client)
+    #return Response(content=result, media_type="application/json")
 
 async def build_chat_results(chat_input: ChatInput, azure_ai_client: AzureAIClient):
     with tracer.start_as_current_span(name="build_chat_results"):
@@ -240,59 +242,89 @@ async def build_chat_results(chat_input: ChatInput, azure_ai_client: AzureAIClie
                 )
             )
 
+            sequential_orchestration = SequentialOrchestration(
+                members=[azure_monitor_agent, kubernetes_agent],
+                agent_response_callback=agent_response_callback
+            )
+
+            runtime = InProcessRuntime()
+            runtime.start()
+
+            orchestration_result = await sequential_orchestration.invoke(
+                task=chat_input.content,
+                runtime=runtime
+            )
+
+            result = await orchestration_result.get()
+
+            # Process the result and yield the response.
+            if result is None or not result.name:
+                yield generate_text_output("No response from agents.") + "\n"
+            else:
+                for msg in generate_chat_output(result):
+                    yield msg + "\n"
+
+            await runtime.stop_when_idle()
+
+            yield generate_text_output("Chat completed.") + "\n"
+
             # Create the AgentGroupChat with selection and termination strategies.
-            chat = AgentGroupChat(
-                agents=[kubernetes_agent, azure_monitor_agent],
-                selection_strategy=KernelFunctionSelectionStrategy(
-                    initial_agent=azure_monitor_agent,
-                    function=SELECTION_FUNCTION,
-                    kernel=kernel,
-                    result_parser=result_parser_selection,
-                    history_variable_name="history",
-                    history_reducer=history_reducer,
-                    agent_variable_name="agents"
-                ),
-                termination_strategy=KernelFunctionTerminationStrategy(
-                    agents=[kubernetes_agent],
-                    function=TERMINATION_FUNCTION,
-                    kernel=kernel,
-                    result_parser=result_parser_termination,
-                    history_variable_name="history",
-                    maximum_iterations=10,
-                    history_reducer=history_reducer,
-                ),
-                #chat_history=chat_history
-            )
+            # chat = AgentGroupChat(
+            #     agents=[kubernetes_agent, azure_monitor_agent],
+            #     selection_strategy=KernelFunctionSelectionStrategy(
+            #         initial_agent=azure_monitor_agent,
+            #         function=SELECTION_FUNCTION,
+            #         kernel=kernel,
+            #         result_parser=result_parser_selection,
+            #         history_variable_name="history",
+            #         history_reducer=history_reducer,
+            #         agent_variable_name="agents"
+            #     ),
+            #     termination_strategy=KernelFunctionTerminationStrategy(
+            #         agents=[kubernetes_agent],
+            #         function=TERMINATION_FUNCTION,
+            #         kernel=kernel,
+            #         result_parser=result_parser_termination,
+            #         history_variable_name="history",
+            #         maximum_iterations=10,
+            #         history_reducer=history_reducer,
+            #     ),
+            #     #chat_history=chat_history
+            # )
 
-            await chat.add_chat_message(
-                ChatMessageContent(
-                    content=chat_input.content,
-                    role=AuthorRole.USER,
-                )
-            )
+            # await chat.add_chat_message(
+            #     ChatMessageContent(
+            #         content=chat_input.content,
+            #         role=AuthorRole.USER,
+            #     )
+            # )
 
-            message = ""
-            try:
-                #async for response in chat.invoke():
-                async for response in chat.invoke_stream():
-                    if response is None or not response.name:
-                        continue
-                    msg = generate_chat_output(response)                    
-                    yield msg
-            except Exception as e:
-                logger.error(f"Error during chat invocation: {e}")
-                yield generate_text_output(f"Error during chat invocation: {e}")
+            # message = ""
+            # try:
+            #     #async for response in chat.invoke():
+            #     async for response in chat.invoke_stream():
+            #         if response is None or not response.name:
+            #             continue
+            #         msg = generate_chat_output(response)                    
+            #         yield msg
+            # except Exception as e:
+            #     logger.error(f"Error during chat invocation: {e}")
+            #     yield generate_text_output(f"Error during chat invocation: {e}")
 
              
             await azure_ai_client.agents.delete_agent(agent_id=kubernetes_agent.id)
         except Exception as e:
             logger.error(f"Error processing chat: {e}")
-            yield generate_text_output(f"Error during chat invocation: {e}")
+            #yield generate_text_output(f"Error during chat invocation: {e}")
+            yield generate_text_output(f"Error during chat invocation: {e}") + "\n"
 
             #if azure_monitor_agent:
             #    await azure_ai_client.agents.delete_agent(agent_id=azure_monitor_agent.id)
             if kubernetes_agent:
                 await azure_ai_client.agents.delete_agent(agent_id=kubernetes_agent.id)
+
+def agent_response_callback(message: ChatMessageContent) -> None:
+    logger.info(f"Agent response: {message.content}")
 
 def result_parser_selection(result):
     x = str(result.value[0]).strip() if result.value[0] is not None else KUBERNETES_AGENT_NAME
@@ -314,8 +346,9 @@ def generate_text_output(response):
 
 def generate_chat_output(response):
     for item in response.items:
-        if isinstance(item, StreamingTextContent):
-            return json.dumps(
+        #if isinstance(item, StreamingTextContent):
+        if isinstance(item, TextContent):
+            yield json.dumps(
                 obj=ChatOutput(
                     content_type=ContentTypeEnum.MARKDOWN,
                     content=item.text,
@@ -323,8 +356,9 @@ def generate_chat_output(response):
                 ),
                 default=serialize_chat_output,                    
             )
-        elif isinstance(item, StreamingFileReferenceContent):
-            return json.dumps(
+        #elif isinstance(item, StreamingFileReferenceContent):
+        elif isinstance(item, FileReferenceContent):
+            yield json.dumps(
                 obj=ChatOutput(
                     content_type=ContentTypeEnum.FILE,
                     content=item.file_id if item.file_id else "",
