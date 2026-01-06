@@ -1,5 +1,5 @@
 fastapi[standard]==0.115.6
-aiohttp==3.11.9
+aiohttp==3.13.3
 pydantic==2.9.2
 pydantic-settings==2.6.1
 nest_asyncio==1.6.0
